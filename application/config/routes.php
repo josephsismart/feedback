@@ -56,27 +56,13 @@ $route['translate_uri_dashes'] = FALSE;
 
 
 //admin
-$route['map'] = 'system/Map';
 $route['get_subcategories'] = 'system/Index/get_subcategories';
+$route['submit_survey'] = 'system/Index/SubmitSurveyForm';
 $route['login'] = 'system/Login';
-$route['consent'] = 'system/Consent';
-$route['signup'] = 'system/Signup';
 $route['index'] = 'system/Index';
-$route['registration'] = 'system/Registration';
 
-$route['updatePassword'] = 'userpassword/Changepassword/updatePassword';
-$route['changepassword'] = 'userpassword/Changepassword';
 
-$route['logout'] = 'system/Login/request_logout';
 $route['requestlogin'] = 'system/Login/request_login';
-$route['requestsignup'] = 'system/Signup/request_signup';
-$route['sendSMS'] = 'system/Signup/sendSMS';
-$route['sendEmail'] = 'system/Signup/email_verification';
+$route['logout'] = 'system/Login/request_logout';
 
 $route['search-barangay'] = 'userpublicmap/map/search_barangay';
-
-// $route['save_national'] = 'useradmin/Dataentry/savenational';
-// $route['save_local'] = 'uservalidator/Dataentry/savelocal';
-// $route['get_national'] = 'useradmin/Dataentry/getnational';
-// $route['get_local'] = 'uservalidator/Dataentry/getlocal';
-// $route['get_localN'] = 'useradmin/Dataentry/getlocal';

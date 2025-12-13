@@ -22,64 +22,65 @@
     <div class="login-box">
 
         <!-- Preloader -->
-        <div class="preloader flex-column justify-content-center align-items-center bg-white">
-            <!-- <img class="animation__shake" src="<?= $system_svg ?>" alt="AdminLTELogo" height="500" width="500"/> -->
-            <img src="<?php echo base_url(); ?>dist/layout_shop/images/logo.svg" width="240" height="70" alt="logo">
-            <!-- Agusan National High School Information System  -->
-        </div>
         <!-- /.login-logo -->
-        <div class="card card-outline card-success">
-            <div class="card-header text-center">
-                <a href="<?= base_url() ?>index" class="d-block">
-                    <img src="<?php echo base_url(); ?>dist/layout_shop/images/logo.svg" width="240" height="70" alt="logo">
-                </a>
-            </div>
-            <div class="card-body">
-                <?php if ($this->input->get("login_attempt") == md5(0) || $this->input->get("login_attempt") == md5(1)) : ?>
-                    <p class="text-danger text-center text-sm"><i class="fa fa-exclamation-triangle"></i> Invalid Username or Password. Please try again.</p>
-                <?php endif ?>
-                <?php if ($this->input->get("login_attempt") != md5(0) || $this->input->get("login_attempt") != md5(1)) : ?>
-                    <p class="login-box-msg">Sign in to start your session</p>
-                <?php endif ?>
-                
-                <form action="<?= base_url() ?>requestlogin" method="post">
-                    <div class="input-group mb-3">
-                        <input type="text" name="username" class="form-control <?php if ($this->input->get("login_attempt") == md5(0)) : ?> is-invalid <?php endif ?>" placeholder="Email" autofocus autocomplete="off" required>
-                        <div class="input-group-append">
-                            <div class="input-group-text">
-                                <span class="fas fa-envelope"></span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="input-group mb-3">
-                        <input type="password" name="password" class="form-control <?php if ($this->input->get("login_attempt") == md5(0)) : ?> is-invalid <?php endif ?>" placeholder="Password" required>
-                        <div class="input-group-append">
-                            <div class="input-group-text">
-                                <span class="fas fa-lock"></span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-12">
-                            <button type="submit" class="btn btn-success btn-block"><i class="fab fa-login mr-2"></i> Login</button>
-                        </div>
-                        <div class="col-12 mb-n2">
-                            <p class="text-center text-sm text-gray">or</p>
-                        </div>
-                        <div class="col-12">
-                            <a href="<?= base_url() ?>signup" type="button" class="btn btn-default btn-block"><i class="fab fa-login mr-2"></i> Signup</a>
-                        </div>
-                    </div>
-                </form>
-                <!-- /.social-auth-links -->
+        <div class="card shadow-sm border-0">
+    <div class="card-body p-4">
 
-                <!-- <p class="mb-1">
-            <a href="forgot-password.html">I forgot my password</a>
-          </p> -->
-
-            </div>
-            <!-- /.card-body -->
+        <!-- Logo -->
+        <div class="text-center mb-3">
+            <img src="<?= $system_logo ?>" width="80" height="80" alt="School Logo">
         </div>
+
+        <!-- Title -->
+        <h5 class="text-center font-weight-bold mb-3">
+            School Feedback System
+        </h5>
+
+        <!-- Error Message -->
+        <?php if (
+            $this->input->get("login_attempt") == md5(0) ||
+            $this->input->get("login_attempt") == md5(1)
+        ) : ?>
+            <p class="text-danger text-center text-sm mb-3">
+                <i class="fa fa-exclamation-triangle"></i> Invalid username or password
+            </p>
+        <?php endif; ?>
+
+        <form action="<?= base_url() ?>requestlogin" method="post" autocomplete="off">
+
+            <!-- Username -->
+            <div class="form-group mb-3">
+                <input
+                    type="text"
+                    name="username"
+                    class="form-control form-control-sm <?php if ($this->input->get("login_attempt") == md5(0)) echo 'is-invalid'; ?>"
+                    placeholder="Username"
+                    autofocus
+                    required
+                >
+            </div>
+
+            <!-- Password -->
+            <div class="form-group mb-3">
+                <input
+                    type="password"
+                    name="password"
+                    class="form-control form-control-sm <?php if ($this->input->get("login_attempt") == md5(0)) echo 'is-invalid'; ?>"
+                    placeholder="Password"
+                    required
+                >
+            </div>
+
+            <!-- Login Button -->
+            <button type="submit" class="btn bg-<?php if ($this->input->get("login_attempt") == md5(0)) echo 'danger'; else echo'navy'; ?> btn-sm btn-block">
+                Login
+            </button>
+
+        </form>
+
+    </div>
+</div>
+
         <!-- /.card -->
     </div>
     <!-- /.login-box -->
