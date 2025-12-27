@@ -16,12 +16,22 @@
     <link rel="stylesheet" href="<?= base_url() ?>plugins/bootstrap/css/bootstrap.min.css">
     <link rel="stylesheet" href="<?= base_url() ?>plugins/sweetalert2-theme-bootstrap-4/bootstrap-4.min.css">
     <link rel="stylesheet" href="<?= base_url() ?>plugins/toastr/toastr.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="<?= base_url() ?>plugins/fontawesome-free-6.4.2-web/css/all.min.css">
+    <link rel="stylesheet" href="<?= base_url() ?>plugins/fontawesome-free/css/all.min.css">
+
     <!-- DataTables -->
     <style>
         body {
             background: #f8f9fa;
             padding: 20px;
             font-family: Arial;
+            font-family: 'Montserrat', 'Century Gothic', Arial, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
         }
 
         .section {
@@ -37,10 +47,57 @@
         .section h2 {
             margin-bottom: 20px;
         }
+
+
+        .select-card {
+            cursor: pointer;
+            transition: all 0.25s ease;
+            border: 2px solid #dee2e6;
+        }
+
+        .select-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 .5rem 1rem rgba(0, 0, 0, .15);
+        }
+
+        .select-card.active {
+            border-color: #0d6efd;
+            background-color: #e7f1ff;
+        }
+
+        .select-card i {
+            color: #0d6efd;
+        }
+
+        td input[type="radio"] {
+            transform: scale(1.7);
+            display: block;
+            margin: auto;
+            cursor: pointer;
+        }
+
+        .table-danger {
+            background-color: #f8d7da !important;
+        }
     </style>
 </head>
 
 <body>
+    <nav class="navbar p-0 mb-5" style="background-color:#6f42c1;">
+        <div class="w-100 d-flex justify-content-between align-items-center px-3" style="min-height:56px;">
+
+            <!-- Left -->
+            <span class="font-weight-bold text-white">
+                ONLINE FEEDBACK FORM
+            </span>
+
+            <!-- Right -->
+            <a href="<?= base_url('login'); ?>" class="d-flex align-items-center text-white font-weight-bold" style="text-decoration:none;">
+                <i class="fas fa-sign-in-alt mr-2"></i> LOGIN
+            </a>
+
+        </div>
+    </nav>
 
     <!-- SECTION 1: CONSENT -->
     <div id="section_consent" class="section" style="display:block;">
@@ -59,40 +116,72 @@
     <!-- SECTION 2: SECTOR & CATEGORY -->
     <div id="section_sector_category" class="section">
 
-        <div class="mb-3 align-items-center" style="text-align: center;">
-            <img src="<?= $system_logo ?>" width="90" height="90" alt="logo" class="rounded-circle shadow-sm">
+        <div class="mb-3 text-center">
+            <img src="<?= $system_logo ?>" width="90" class="rounded-circle shadow-sm">
         </div>
-        <h2 class="text-center">Select Sector & Category</h2>
-        <div class="mb-3">
-            <select id="sectorSelect" name="select_sector" class="form-select border-primary" onchange="$('[name=sector_id]').val($(this).val());">
-                <option value="">-- Select Sector --</option>
-                <?php
-                $query = $this->db->query("SELECT * FROM public.sector");
-                foreach ($query->result() as $row) {
-                    echo "<option value=\"" . $row->id . "\">" . $row->name . "</option>";
-                }
-                ?>
-            </select>
+
+        <!-- hidden -->
+
+        <!-- SECTOR -->
+        <div id="sectorSection">
+            <h2 class="text-center mb-4">Select Sector</h2>
+            <div class="row g-3" id="sectorCards">
+                <?php foreach ($this->db->get('sector')->result() as $s) : ?>
+                    <div class="col-12 col-md-6 mb-3">
+                        <div class="card select-card sector-card text-center h-100" data-id="<?= $s->id ?>" data-name="<?= $s->name ?>">
+
+                            <div class="sector-img-wrapper mx-auto">
+                                <img src="<?= base_url($s->img_path) ?>" width="150" height="150" alt="<?= $s->name ?>" class="sector-img">
+                            </div>
+
+                            <strong class="mt-2"><?= $s->name ?></strong>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
         </div>
-        <!-- Category Container -->
-        <div class="mb-3" id="categoryContainer">
-            <label>Category</label>
-            <select class="form-select root-category border-primary" name="select_category" onchange="$(`[name=category_id]`).val($(this).val());">
-                <option value="">-- Select Category --</option>
-                <?php
-                // Load root categories (parent_id IS NULL)
-                $root_categories = $this->db->where('parent_id', NULL)
-                    ->where('is_active', TRUE)
-                    ->order_by('order_by', 'ASC')
-                    ->get('category')
-                    ->result();
-                foreach ($root_categories as $c) {
-                    echo "<option value=\"{$c->id}\">{$c->name}</option>";
-                }
-                ?>
-            </select>
+
+        <!-- NESTED CATEGORY -->
+        <div id="categorySection" class="mt-4 d-none">
+
+            <button class="btn btn-outline-secondary mb-3" id="btnBack">
+                ← Back
+            </button>
+
+            <h2 class="text-center mb-4" id="categoryTitle">
+                Select Category
+            </h2>
+
+            <div class="row g-3" id="categoryCards"></div>
         </div>
-        <button class="btn btn-primary" id="btnSectorCategoryNext">Next</button>
+    </div>
+
+    <!-- Hidden inputs -->
+
+    <!-- NESTED CATEGORY -->
+    <div id="nestedCategorySection" class="mt-4 d-none">
+
+        <button class="btn btn-outline-secondary mb-3" id="btnBackLevel">
+            ← Back
+        </button>
+
+        <h2 class="text-center mb-4" id="categoryTitle">Select Subcategory</h2>
+
+        <div class="row g-3" id="nestedCategoryCards"></div>
+        <input type="hidden" name="final_category_id">
+    </div>
+
+    <!-- SUBCATEGORY -->
+    <div id="subcategorySection" class="mt-4 d-none">
+
+        <button class="btn btn-outline-secondary mb-3" id="btnBackToCategory">
+            ← Back to Category
+        </button>
+
+        <h2 class="text-center mb-4">Select Subcategory</h2>
+
+        <div class="row g-3" id="subcategoryCards"></div>
+        <input type="hidden" name="subcategory_id">
     </div>
 
     <!-- SECTION 3: FEEDBACK FORM -->
@@ -146,7 +235,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <?php $query = $this->db->query("SELECT * FROM public.service");
+                    <?php $query = $this->db->query("SELECT * FROM service");
                     foreach ($query->result() as $row) {
                         $rowId = $row->id;
                         echo "
@@ -172,6 +261,58 @@
         </div>
     </div>
 
+    <div class="modal fade" id="consentModal" tabindex="-1" role="dialog">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+
+                <div class="modal-header" style="background-color: #6f42c1;color: #fff;">
+                    <h5 class="modal-title">Consent and Terms of Feedback</h5>
+                    <button type="button" class="btn btn-default close" data-dismiss="modal"><i class="fa fa-"></i></button>
+                </div>
+
+                <div class="modal-body">
+                    <div style="max-height: 350px; overflow-y: auto; padding-right: 10px;">
+
+                        <h4>PLEASE READ CAREFULLY</h4>
+                        <p>
+                            By participating in this feedback form, you voluntarily agree to provide
+                            information that may include personal details such as your name, sex,
+                            address, and contact number. These details are optional, and you may choose
+                            not to provide them if you prefer anonymous feedback.
+                        </p>
+
+                        <p>
+                            The information collected will only be used to improve the quality of
+                            public service offered by our office. Your responses will be kept
+                            confidential and accessible only to authorized personnel.
+                        </p>
+
+                        <p>By clicking the "I Agree" button below, you confirm that:</p>
+
+                        <ul>
+                            <li>You understand the purpose of this feedback.</li>
+                            <li>You voluntarily provide your answers.</li>
+                            <li>You can refuse to answer optional personal questions.</li>
+                            <li>Your data may be processed under the Data Privacy Act.</li>
+                        </ul>
+
+                        <p>If you do not agree, simply close this window.</p>
+
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" data-dismiss="modal">Close</button>
+
+                    <button class="btn btn-success" id="agreeBtn" data-dismiss="modal">
+                        I Agree
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
     <script src="<?= base_url() ?>plugins/jquery/jquery.min.js"></script>
     <script src="<?= base_url() ?>plugins/jquery/jquery.form.min.js"></script>
     <!-- Bootstrap 4 -->
@@ -182,6 +323,134 @@
     <script src="<?= base_url() ?>plugins/toastr/toastr.min.js"></script>
 
     <script>
+        let categoryStack = [];
+        $('#btnBackToSector').on('click', function() {
+            $('#categorySection').fadeOut(300, function() {
+                $('#sectorSection').fadeIn(300);
+            });
+            $('[name=category_id]').val('');
+            $('#btnSectorCategoryNext').prop('disabled', true);
+        });
+        $('#btnBackToSector').removeClass('d-none');
+        $(document).on('click', '.sector-card', function() {
+
+            $('.sector-card').removeClass('active');
+            $(this).addClass('active');
+
+            const sectorId = $(this).data('id');
+            const sectorName = $(this).data('name');
+
+            $('[name=sector_id]').val(sectorId);
+            $("#formSector").val(sectorName);
+
+            categoryStack = [];
+
+            $('#sectorSection').hide();
+            loadCategoryLevel(null, sectorId, 'Select Category');
+        });
+
+        $(document).on('click', '.category-card', function() {
+
+            $('.category-card').removeClass('active');
+            $(this).addClass('active');
+
+            const id = $(this).data('id');
+            const name = $(this).data('name');
+
+            categoryStack.push({
+                id,
+                name
+            });
+            $("[name=category_id]").val(id);
+            loadCategoryLevel(id, null, name);
+        });
+
+        $(document).on('click', '.subcategory-card', function() {
+
+            $('.subcategory-card').removeClass('active');
+            $(this).addClass('active');
+
+            $('[name=subcategory_id]').val($(this).data('id'));
+
+            // Proceed to feedback
+            $('#section_sector_category').hide();
+            $('#section_feedback').show();
+        });
+        $(document).on('click', '.nested-category-card', function() {
+
+            $('.nested-category-card').removeClass('active');
+            $(this).addClass('active');
+
+            const id = $(this).data('id');
+            const name = $(this).data('name');
+
+            categoryStack.push({
+                id,
+                name
+            });
+
+            loadCategoryLevel(id, name);
+        });
+
+        $('#btnBack').click(function() {
+
+            categoryStack.pop();
+
+            // Back to sector
+            if (categoryStack.length === 0) {
+                $('#categorySection').hide();
+                $('#sectorSection').show();
+                return;
+            }
+
+            // Back one level
+            const prev = categoryStack[categoryStack.length - 1];
+            loadCategoryLevel(prev.id, null, prev.name);
+        });
+
+        $('#btnBackLevel').click(function() {
+
+            categoryStack.pop();
+
+            // Back to CATEGORY list
+            if (categoryStack.length === 0) {
+                $('#nestedCategorySection').hide();
+                $('#categorySection').show();
+                return;
+            }
+
+            // Load previous level
+            const prev = categoryStack[categoryStack.length - 1];
+            loadCategoryLevel(prev.id, prev.name);
+        });
+
+        $('#formCategory').val(
+            categoryStack.map(c => c.name).join(' → ')
+        );
+
+        $('#btnBackToCategory').click(function() {
+            $('#subcategorySection').fadeOut(300, function() {
+                $('#categorySection').fadeIn(300);
+            });
+            $('[name=subcategory_id]').val('');
+        });
+
+        $('#btnBackToSector').click(function() {
+            $('#categorySection').fadeOut(300, function() {
+                $('#sectorSection').fadeIn(300);
+            });
+            $('[name=category_id]').val('');
+        });
+
+        // Back button
+        $('#btnBackToSector').on('click', function() {
+            $('#categorySection').fadeOut(300, function() {
+                $('#sectorSection').fadeIn(300);
+            });
+
+            $('[name=category_id]').val('');
+            $('#btnSectorCategoryNext').prop('disabled', true);
+        });
         document.addEventListener("DOMContentLoaded", function() {
 
             function generateUUID() {
@@ -223,6 +492,8 @@
 
         function validate(form_id) {
             let invalid = 0;
+            let checkedRadios = [];
+
             $($("#" + form_id).find("input").get().reverse()).each(function() {
                 if ($("#" + form_id + ' input[type="search"]')) {
                     // return 0;
@@ -241,6 +512,26 @@
                             $("#" + form_id + " ." + name).removeClass('border-danger');
                         }
                     }
+                }
+            });
+            $("#" + form_id + " input[type='radio']").each(function() {
+
+                let radioName = $(this).attr("name");
+
+                // prevent checking same group multiple times
+                if (checkedRadios.includes(radioName)) return;
+
+                checkedRadios.push(radioName);
+
+                // check if at least one radio in group is selected
+                if (!$("input[name='" + radioName + "']:checked").length) {
+
+                    // highlight entire table row
+                    $(this).closest("tr").addClass("table-danger");
+
+                    invalid++;
+                } else {
+                    $(this).closest("tr").removeClass("table-danger");
                 }
             });
             valid = invalid;
@@ -318,6 +609,11 @@
             $('#btnProceed').prop('disabled', !$(this).is(':checked'));
         });
 
+        $("#agreeBtn").click(function() {
+            $('#section_consent').hide();
+            $('#section_sector_category').show();
+        });
+
         $('#btnProceed').click(() => {
             $('#section_consent').hide();
             $('#section_sector_category').show();
@@ -344,7 +640,7 @@
             // All validations passed, proceed
             // You can now populate the feedback form
             const finalCategory = $('#categoryContainer select:last').find(':selected').text();
-            $('#formSector').val($('#sectorSelect option:selected').text());
+
             $('#formCategory').val(finalCategory);
 
             $('#section_sector_category').hide();
@@ -404,7 +700,51 @@
         $('.toastrDefaultWarning').click(function() {
             toastr.warning('Lorem ipsum dolor sit amet, consetetur sadipscing elitr.')
         });
-        let categoryPath = [];
+
+        function loadCategoryLevel(parentId, sectorId, title) {
+
+            $('#categoryTitle').text(title);
+            $('#categoryCards').html('<div class="text-center">Loading...</div>');
+            $('#categorySection').removeClass('d-none');
+
+            let url = parentId === null ?
+                "<?= base_url('get-categories/') ?>" + sectorId :
+                "<?= base_url('get-subcategories/') ?>" + parentId;
+
+            $.get(url, function(data) {
+
+                let res = JSON.parse(data);
+
+                // ✅ NO MORE CHILD → GO FEEDBACK
+                if (res.length === 0) {
+                    const final = categoryStack[categoryStack.length - 1];
+                    $('[name=final_category_id]').val(final.id);
+
+                    $('#section_sector_category').hide();
+                    $('#section_feedback').show();
+
+                    $('#formCategory').val(
+                        categoryStack.map(c => c.name).join(' → ')
+                    );
+                    return;
+                }
+
+                let html = '';
+                res.forEach(r => {
+                    html += `
+                <div class="col-12">
+                    <div class="card text-center p-3 select-card category-card"
+                         data-id="${r.id}"
+                         data-name="${r.name}">
+                        <i class="fa-solid fa-layer-group fa-5x mb-3"></i>
+                        <strong>${r.name}</strong>
+                    </div>
+                </div>`;
+                });
+
+                $('#categoryCards').html(html);
+            });
+        }
 
         function loadChildCategories(parentId, container) {
             $.getJSON("<?= base_url() ?>get_subcategories", {

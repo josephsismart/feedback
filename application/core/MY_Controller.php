@@ -69,8 +69,8 @@ class MY_Controller extends CI_Controller
 
     public function redirect_home()
     {
-        $level = $this->session->feedback_login_level;
-        $defaultPassword = $this->session->feedback_change_password;
+        $level = $this->session->feedback_login_id;
+        $defaultPassword = 0;#$this->session->feedback_change_password;
         $uri = $this->session->feedback_login_uri;
         $landing = $this->session->feedback_login_landing;
         // if (isset($this->session->feedback_login_id) && $this->uri->segment(1) == "" || $this->uri->segment(1) == "login" || $this->uri->segment(1) == "map") {

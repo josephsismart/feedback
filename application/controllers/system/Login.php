@@ -31,10 +31,9 @@ class Login extends MY_Controller
         $data = [];
         // Use prepared statements to prevent SQL injection
         $chck = $this->db->query(
-            "SELECT t1.id,t1.password, t1.name, t1.username FROM public.user t1 ",
-            // "SELECT t1.id,t1.password, t1.name, t1.username FROM public.user t1
-            //                         WHERE t1.password = ? AND t1.username = ? LIMIT 1",
-            // array($password, $username)
+            "SELECT t1.id,t1.password, t1.name, t1.username FROM user t1 
+                                     WHERE t1.password = ? AND t1.username = ? LIMIT 1",
+            array($password, $username)
         );
 
         if ($chck->num_rows() > 0) {

@@ -56,7 +56,10 @@ $route['translate_uri_dashes'] = FALSE;
 
 
 //admin
-$route['get_subcategories'] = 'system/Index/get_subcategories';
+$route['get-subcategories/(:num)'] = 'system/Index/get_subcategories/$1';
+$route['get-categories/(:num)'] = 'system/Index/get_categories/$1';
+$route['get_job_factor_report'] = 'admin/Report/get_job_factor_report';
+
 $route['submit_survey'] = 'system/Index/SubmitSurveyForm';
 $route['login'] = 'system/Login';
 $route['index'] = 'system/Index';

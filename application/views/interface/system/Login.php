@@ -16,7 +16,16 @@
     <link rel="stylesheet" href="<?= base_url() ?>plugins/icheck-bootstrap/icheck-bootstrap.min.css">
     <!-- Theme style -->
     <link rel="stylesheet" href="<?= base_url() ?>dist/css/adminlte.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
+<style>
+    body {
+        background: #f8f9fa;
+        padding: 20px;
+        font-family: Arial;
+        font-family: 'Montserrat', 'Century Gothic', Arial, sans-serif;
+    }
+</style>
 
 <body class="hold-transition login-page">
     <div class="login-box">
@@ -24,62 +33,54 @@
         <!-- Preloader -->
         <!-- /.login-logo -->
         <div class="card shadow-sm border-0">
-    <div class="card-body p-4">
+            <div class="card-body p-4">
 
-        <!-- Logo -->
-        <div class="text-center mb-3">
-            <img src="<?= $system_logo ?>" width="80" height="80" alt="School Logo">
+                <!-- Logo -->
+                <div class="text-center mb-3">
+                    <img src="<?= $system_logo ?>" width="80" height="80" alt="School Logo">
+                </div>
+
+                <!-- Title -->
+                <h5 class="text-center font-weight-bold mb-3">
+                    School Feedback System
+                </h5>
+
+                <!-- Error Message -->
+                <?php if (
+                    $this->input->get("login_attempt") == md5(0) ||
+                    $this->input->get("login_attempt") == md5(1)
+                ) : ?>
+                    <p class="text-danger text-center text-sm mb-3">
+                        <i class="fa fa-exclamation-triangle"></i> Invalid username or password
+                    </p>
+                <?php endif; ?>
+
+                <form action="<?= base_url() ?>requestlogin" method="post" autocomplete="off">
+
+                    <!-- Username -->
+                    <div class="form-group mb-3">
+                        <input type="text" name="username" class="form-control form-control-sm <?php if ($this->input->get("login_attempt") == md5(0)) echo 'is-invalid'; ?>" placeholder="Username" autofocus required>
+                    </div>
+
+                    <!-- Password -->
+                    <div class="form-group mb-3">
+                        <input type="password" name="password" class="form-control form-control-sm <?php if ($this->input->get("login_attempt") == md5(0)) echo 'is-invalid'; ?>" placeholder="Password" required>
+                    </div>
+
+                    <!-- Login Button -->
+                    <button type="submit" style="background-color: #6f42c1;color: #fff;" class="btn bg-<?php if ($this->input->get("login_attempt") == md5(0)) echo 'danger';
+                                                        else echo ''; ?> btn-sm btn-block">
+                        Login
+                    </button>
+                    <hr>
+                    <a href="<?= base_url() ?>index" type="button" class="btn bg-default btn-sm btn-block">
+                        Go to Feedback Form
+                    </a>
+
+                </form>
+
+            </div>
         </div>
-
-        <!-- Title -->
-        <h5 class="text-center font-weight-bold mb-3">
-            School Feedback System
-        </h5>
-
-        <!-- Error Message -->
-        <?php if (
-            $this->input->get("login_attempt") == md5(0) ||
-            $this->input->get("login_attempt") == md5(1)
-        ) : ?>
-            <p class="text-danger text-center text-sm mb-3">
-                <i class="fa fa-exclamation-triangle"></i> Invalid username or password
-            </p>
-        <?php endif; ?>
-
-        <form action="<?= base_url() ?>requestlogin" method="post" autocomplete="off">
-
-            <!-- Username -->
-            <div class="form-group mb-3">
-                <input
-                    type="text"
-                    name="username"
-                    class="form-control form-control-sm <?php if ($this->input->get("login_attempt") == md5(0)) echo 'is-invalid'; ?>"
-                    placeholder="Username"
-                    autofocus
-                    required
-                >
-            </div>
-
-            <!-- Password -->
-            <div class="form-group mb-3">
-                <input
-                    type="password"
-                    name="password"
-                    class="form-control form-control-sm <?php if ($this->input->get("login_attempt") == md5(0)) echo 'is-invalid'; ?>"
-                    placeholder="Password"
-                    required
-                >
-            </div>
-
-            <!-- Login Button -->
-            <button type="submit" class="btn bg-<?php if ($this->input->get("login_attempt") == md5(0)) echo 'danger'; else echo'navy'; ?> btn-sm btn-block">
-                Login
-            </button>
-
-        </form>
-
-    </div>
-</div>
 
         <!-- /.card -->
     </div>

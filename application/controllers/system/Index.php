@@ -17,21 +17,35 @@ class Index extends MY_Controller
         $this->redirect_home();
         $data = $this->system();
         $data += [
-            "page_title"    => "Fresh Organic | Farm-to-Table",
+            "page_title"    => "Online Feedback Form",
             "current_location"  => "Index",
         ];
         $this->load->view('interface/system/Index', $data);
     }
 
-    public function get_subcategories()
+    public function get_categories($sector_id)
     {
-        $parent_id = $this->input->get('parent_id');
-        $categories = $this->db->where('parent_id', $parent_id)
-            ->where('is_active', TRUE)
+        $data = $this->db
+            ->where('parent_id', NULL)
+            ->where('is_active', 1)
             ->order_by('order_by', 'ASC')
             ->get('category')
             ->result_array();
-        echo json_encode($categories);
+
+        echo json_encode($data);
+    }
+
+
+    public function get_subcategories($parent_id)
+    {
+        $data = $this->db
+            ->where('parent_id', $parent_id)
+            ->where('is_active', 1)
+            ->order_by('order_by', 'ASC')
+            ->get('category')
+            ->result();
+
+        echo json_encode($data);
     }
 
     public function SubmitSurveyForm()
@@ -58,6 +72,19 @@ class Index extends MY_Controller
         $this->db->insert("feedback", $data);
         $feedback_id = $this->db->insert_id(); // GET FEEDBACK ID
 
+        if ($feedback_id) {
+
+            $comment = $this->input->post("comment");
+
+            // CALL stored procedure
+            $sql = "CALL sp_evaluate_feedback_sentiment(?, ?)";
+            $this->db->query($sql, [$feedback_id, $comment]);
+
+            // IMPORTANT: clear remaining results (MySQL requirement)
+            while ($this->db->conn_id->more_results()) {
+                $this->db->conn_id->next_result();
+            }
+        }
 
         // ===== Insert FEEDBACK SERVICE ratings =====
         foreach ($_POST as $key => $value) {
@@ -79,15 +106,15 @@ class Index extends MY_Controller
                         "rating_int"  => $rating_int,
                         "rating_txt"  => $rating_txt
                     ];
-                    if ($this->db->insert_batch("feedback_service", $data_service)) {
-                        $true += ["message"   => "Successfully created!"];
-                        $ret = $true;
-                    } else {
-                        $false += ["message"   => "Something went wrong!"];
-                        $ret = $false;
-                    }
                 }
             }
+        }
+        if ($this->db->insert_batch("feedback_service", $data_service)) {
+            $true += ["message"   => "Successfully created!"];
+            $ret = $true;
+        } else {
+            $false += ["message"   => "Something went wrong!"];
+            $ret = $false;
         }
 
 

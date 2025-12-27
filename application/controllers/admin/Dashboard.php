@@ -1,7 +1,8 @@
 <?php
-defined('BASEPATH') OR exit('No direct script access allowed');
+defined('BASEPATH') or exit('No direct script access allowed');
 
-class Dashboard extends MY_Controller {
+class Dashboard extends MY_Controller
+{
 
     public function __construct()
     {
@@ -10,7 +11,7 @@ class Dashboard extends MY_Controller {
     }
 
     public function index()
-    {       
+    {
         // $page_data = $this->system();
         // $uri = $this->session->feedback_login_uri;
         // $page_data += [
@@ -22,13 +23,269 @@ class Dashboard extends MY_Controller {
         // $this->public_create_page($page_data);
 
 
-        $this->redirect_home();
+        $this->redirect();
         $data = $this->system();
         $data += [
             "page_title"    => "Dashboard",
             "current_location"  => "dashboard",
         ];
         $this->load->view('interface/admin/Dashboard', $data);
+    }
+
+
+    function highlight_sentiment_words($comment, $words)
+    {
+        foreach ($words as $wordInfo) {
+            $word = preg_quote($wordInfo->word, '/');
+            $type = $wordInfo->type;
+            $weight = $wordInfo->weight ?? 1; // default 1 if not provided
+
+            $color = match ($type) {
+                'positive' => 'green',
+                'negative' => 'red',
+                default    => 'black'
+            };
+
+            $tooltip = ucfirst($type) . " (" . $weight . ")";
+
+            $comment = preg_replace(
+                "/\b($word)\b/i",
+                "<span style='color:$color; font-weight:bold;' title='$tooltip'>$1</span>",
+                $comment
+            );
+        }
+        return $comment;
+    }
+
+    public function getFeedbackReports()
+    {
+        $from_date = $this->input->get('from');
+        $to_date   = $this->input->get('to');
+
+        $result = [
+            'total'      => 0,
+            'positive'   => 0,
+            'negative'   => 0,
+            'neutral'    => 0,
+            'top_words'  => [],
+            'root_names' => []
+        ];
+
+        /* -------------------------------
+       DATE FILTER
+       ------------------------------- */
+        $dateWhere = "";
+        if ($from_date && $to_date) {
+            $dateWhere = "AND f.date_created BETWEEN '{$from_date}' AND '{$to_date}'";
+        }
+
+        /* =========================================================
+       1. TOTAL / POSITIVE / NEGATIVE / NEUTRAL (FROM SUMMARY)
+       ========================================================= */
+        $summary = $this->db->query("
+        SELECT
+            COUNT(fs.id) AS total,
+            SUM(CASE WHEN fs.sentiment = 'positive' THEN 1 ELSE 0 END) AS positive,
+            SUM(CASE WHEN fs.sentiment = 'negative' THEN 1 ELSE 0 END) AS negative,
+            SUM(CASE WHEN fs.sentiment = 'neutral'  THEN 1 ELSE 0 END) AS neutral
+        FROM feedback_sentiment fs
+        JOIN feedback f ON f.id = fs.feedback_id
+        WHERE 1=1
+        {$dateWhere}
+    ")->row();
+
+        if ($summary) {
+            $result['total']    = (int) $summary->total;
+            $result['positive'] = (int) $summary->positive;
+            $result['negative'] = (int) $summary->negative;
+            $result['neutral']  = (int) $summary->neutral;
+        }
+
+        /* =========================================================
+       2. CATEGORY ROOT COUNTS
+       ========================================================= */
+        $feedback_category = $this->db->query("
+        SELECT
+            v.root_name,
+            COUNT(f.id) AS count
+        FROM feedback f
+        JOIN vw_category_root v ON v.category_id = f.category_id
+        WHERE 1=1
+        {$dateWhere}
+        GROUP BY v.root_name
+    ")->result();
+
+        foreach ($feedback_category as $row) {
+            $result['root_names'][] = [
+                'name'  => $row->root_name,
+                'count' => (int) $row->count
+            ];
+        }
+
+        /* =========================================================
+       3. TOP WORDS (FROM feedback_sentiment_words)
+       ========================================================= */
+        $topWords = $this->db->query("
+        SELECT
+            fsw.type        AS sentiment,
+            fsw.word        AS name,
+            COUNT(*)        AS count
+        FROM feedback_sentiment_words fsw
+        JOIN feedback f ON f.id = fsw.feedback_id
+        WHERE 1=1
+        {$dateWhere}
+        GROUP BY fsw.type, fsw.word
+        ORDER BY fsw.type, count DESC
+        LIMIT 10
+    ")->result();
+
+        $result['top_words'] = $topWords;
+
+        /* -------------------------------
+       OUTPUT
+       ------------------------------- */
+        echo json_encode($result);
+    }
+
+    function getComments()
+    {
+        $requestData = $_REQUEST;
+
+        $searchValue = isset($requestData['search']['value'])
+            ? trim($requestData['search']['value'])
+            : '';
+
+        $from = date("Y-m-d");
+        $to   = date("Y-m-d");
+
+        if (isset($requestData['from'])) $from = $requestData['from'];
+        if (isset($requestData['to']))   $to   = $requestData['to'];
+
+        $comment_filter = isset($requestData['comment_filter'])
+            ? (int)$requestData['comment_filter']
+            : 0;
+
+        $dateWhere = "f.date_created BETWEEN '{$from}' AND '{$to}'";
+
+        /* Sentiment filter */
+        $filter_where = "";
+        if ($comment_filter > 0) {
+            $map = [1 => 'positive', 2 => 'negative', 3 => 'neutral'];
+            $sentiment = $map[$comment_filter];
+            $filter_where = "AND fs.sentiment = '{$sentiment}'";
+        }
+
+        /* Pagination */
+        list($limit, $offset) = $this->calculatePagination($requestData);
+
+        /* Search */
+        $searchSql = "";
+        if ($searchValue !== '') {
+            $searchSql = "AND f.comment LIKE '%" . $this->db->escape_like_str($searchValue) . "%'";
+        }
+
+        /* TOTAL RECORDS */
+        $totalQuery = $this->db->query("
+        SELECT COUNT(*) AS total
+        FROM feedback f
+        JOIN feedback_sentiment fs ON fs.feedback_id = f.id
+        WHERE f.comment IS NOT NULL
+          AND {$dateWhere}
+          {$searchSql}
+          {$filter_where}
+    ")->row()->total;
+
+        /* DATA QUERY */
+        $dataQuery = $this->db->query("
+        SELECT
+            f.id,
+            f.date_created,
+            f.comment,
+            s.name AS sector,
+            c.name AS category,
+            fs.sentiment
+        FROM feedback f
+        JOIN feedback_sentiment fs ON fs.feedback_id = f.id
+        LEFT JOIN sector s ON s.id = f.sector_id
+        LEFT JOIN category c ON c.id = f.category_id
+        WHERE f.comment IS NOT NULL
+          AND {$dateWhere}
+          {$searchSql}
+          {$filter_where}
+        ORDER BY f.id DESC
+        LIMIT {$offset}, {$limit}
+    ");
+
+        /* Sentiment words */
+        $sentimentWords = $this->db->query("
+        SELECT word, type
+        FROM sentiment_words
+        WHERE type IN ('positive','negative')
+        ORDER BY LENGTH(word) DESC
+    ")->result();
+
+        $data = [];
+
+        foreach ($dataQuery->result() as $row) {
+
+            // Highlight words (no scoring here)
+            $analysis = $this->analyzeSentiment($row->comment, $sentimentWords);
+
+            $highlighted = $row->comment;
+            foreach ($analysis['matched'] as $m) {
+                $color = $m['type'] === 'positive' ? 'success' : 'danger';
+                $highlighted = preg_replace(
+                    '/\b(' . preg_quote($m['word'], '/') . ')\b/i',
+                    "<span class='badge bg-{$color} p-1'>$1</span>",
+                    $highlighted
+                );
+            }
+
+            $data[] = [
+                $row->date_created,
+                $row->sector,
+                $row->category,
+                $highlighted,
+                ucfirst($row->sentiment)
+            ];
+        }
+
+        echo json_encode([
+            'draw'            => intval($requestData['draw']),
+            'recordsTotal'    => (int)$totalQuery,
+            'recordsFiltered' => (int)$totalQuery,
+            'data'            => $data
+        ]);
+    }
+
+    function analyzeSentiment($comment, $sentimentWords)
+    {
+        // Lowercase & remove punctuation
+        $text = strtolower($comment);
+        $text = preg_replace('/[.,!?:;]/', ' ', $text);
+
+        $matched = [];
+
+        foreach ($sentimentWords as $sw) {
+            $word = strtolower($sw->word);
+
+            // Match exact words OR phrases
+            $pattern = (strpos($word, ' ') !== false)
+                ? '/' . preg_quote($word, '/') . '/i'
+                : '/\b' . preg_quote($word, '/') . '\b/i';
+
+            if (preg_match($pattern, $text)) {
+                $matched[] = [
+                    'word' => $sw->word,
+                    'type' => $sw->type
+                ];
+
+                // Replace matched word with space to prevent double counting
+                $text = preg_replace($pattern, ' ', $text);
+            }
+        }
+
+        return ['matched' => $matched];
     }
 }
 
