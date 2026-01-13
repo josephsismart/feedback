@@ -77,13 +77,9 @@ class Index extends MY_Controller
             $comment = $this->input->post("comment");
 
             // CALL stored procedure
-            $sql = "CALL sp_evaluate_feedback_sentiment(?, ?)";
-            $this->db->query($sql, [$feedback_id, $comment]);
-
-            // IMPORTANT: clear remaining results (MySQL requirement)
-            while ($this->db->conn_id->more_results()) {
-                $this->db->conn_id->next_result();
-            }
+            $this->evaluate_feedback_sentiment($feedback_id, $comment);
+            
+            $this->analyzeCommentWithAI($comment);
         }
 
         // ===== Insert FEEDBACK SERVICE ratings =====
@@ -127,6 +123,7 @@ class Index extends MY_Controller
             echo json_encode(["success" => true, "message" => "Successfully created!"]);
         }
     }
+
 }
 
 /* End of file Login_admin.php */

@@ -36,7 +36,7 @@ class Dashboard extends MY_Controller
     function highlight_sentiment_words($comment, $words)
     {
         foreach ($words as $wordInfo) {
-            $word = preg_quote($wordInfo->word, '/');
+            $word = $wordInfo->word;#preg_quote($wordInfo->word, '/');
             $type = $wordInfo->type;
             $weight = $wordInfo->weight ?? 1; // default 1 if not provided
 
@@ -61,6 +61,7 @@ class Dashboard extends MY_Controller
     {
         $from_date = $this->input->get('from');
         $to_date   = $this->input->get('to');
+        $this->evaluate_all_feedback_sentiment();
 
         $result = [
             'total'      => 0,
@@ -109,7 +110,16 @@ class Dashboard extends MY_Controller
             v.root_name,
             COUNT(f.id) AS count
         FROM feedback f
-        JOIN vw_category_root v ON v.category_id = f.category_id
+        JOIN (WITH RECURSIVE category_root AS (
+                SELECT id AS category_id, id AS root_id, name AS root_name, parent_id
+                FROM category
+                WHERE parent_id IS NULL
+                UNION ALL
+                SELECT c.id, cr.root_id, cr.root_name, c.parent_id
+                FROM category c
+                JOIN category_root cr ON c.parent_id = cr.category_id
+            )
+            SELECT * FROM category_root ) v ON v.category_id = f.category_id
         WHERE 1=1
         {$dateWhere}
         GROUP BY v.root_name

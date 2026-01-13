@@ -17,7 +17,8 @@ if (!$this->session->feedback_login_id) {
   <!-- Font Awesome -->
   <link rel="stylesheet" href="<?= base_url() ?>plugins/fontawesome-free/css/all.min.css">
   <!-- icheck bootstrap -->
-  <link rel="stylesheet" href="<?= base_url() ?>plugins/icheck-bootstrap/icheck-bootstrap.min.css">
+  <link rel="stylesheet" href="<?= base_url() ?>dist/css/adminlte.min.css?v=3.2.0">
+
   <!-- Theme style -->
   <link rel="stylesheet" href="<?= base_url() ?>plugins/datatables-bs4/css/dataTables.bootstrap4.min.css">
   <link rel="stylesheet" href="<?= base_url() ?>plugins/bootstrap/css/bootstrap.min.css">
@@ -56,55 +57,6 @@ if (!$this->session->feedback_login_id) {
     .section h2 {
       margin-bottom: 20px;
     }
-
-    /* Dark overlay */
-    #menuOverlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0, 0, 0, 0.4);
-      display: none;
-      z-index: 1040;
-    }
-
-    /* Side menu */
-    #sideMenu {
-      position: fixed;
-      top: 0;
-      right: -300px;
-      width: 300px;
-      height: 100%;
-      background: #fff;
-      box-shadow: -4px 0 10px rgba(0, 0, 0, 0.15);
-      transition: right 0.3s ease;
-      z-index: 1050;
-    }
-
-    #sideMenu.active {
-      right: 0;
-    }
-
-    /* Header */
-    .menu-header {
-      padding: 15px;
-      border-bottom: 1px solid #ddd;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    #sideMenu a {
-      display: block;
-      width: 100%;
-      text-decoration: none;
-      color: #333;
-    }
-
-    #sideMenu .list-group-item:hover {
-      background: #f8f9fa;
-    }
   </style>
 </head>
 
@@ -121,38 +73,8 @@ if (!$this->session->feedback_login_id) {
       <button class="btn btn-outline-secondary btn-sm" id="openMenu">
         <i class="fas fa-bars text-white"></i>
       </button>
-      <!-- OVERLAY -->
-      <div id="menuOverlay"></div>
 
-      <!-- SIDE MENU -->
-      <div id="sideMenu">
-        <div class="menu-header">
-          <span class="font-weight-bold">Menu</span>
-          <button class="btn btn-sm btn-light" id="closeMenu">
-            <i class="fas fa-times"></i>
-          </button>
-        </div>
-
-        <ul class="list-group list-group-flush">
-          <li class="list-group-item">
-            <a href="<?= base_url('admin/dashboard') ?>">
-              <i class="fas fa-tachometer-alt me-2"></i> Dashboard
-            </a>
-          </li>
-
-          <li class="list-group-item bg-success">
-            <a href="<?= base_url('admin/report') ?>" class="text-white">
-              <i class="fas fa-chart-bar me-2"></i> Report
-            </a>
-          </li>
-
-          <li class="list-group-item text-danger">
-            <a href="<?= base_url('logout') ?>" class="text-danger">
-              <i class="fas fa-sign-out-alt me-2"></i> Logout
-            </a>
-          </li>
-        </ul>
-      </div>
+      <?php $this->load->view('interface/admin/_menu') ?>
 
     </div>
   </nav>
@@ -216,7 +138,8 @@ if (!$this->session->feedback_login_id) {
             </div>
           </div>
         </div>
-
+        <div class="col-12" id="sentimentWord">
+        </div>
       </div>
 
 
@@ -278,15 +201,7 @@ if (!$this->session->feedback_login_id) {
 
   <script>
     let selected_category_id = null;
-    const openMenu = document.getElementById('openMenu');
-    const closeMenu = document.getElementById('closeMenu');
-    const sideMenu = document.getElementById('sideMenu');
-    const overlay = document.getElementById('menuOverlay');
 
-    openMenu.onclick = () => {
-      sideMenu.classList.add('active');
-      overlay.style.display = 'block';
-    };
     $(document).ready(function() {
 
       // Load root categories
@@ -335,8 +250,10 @@ if (!$this->session->feedback_login_id) {
         const selectedValue = $(this).val(); // ✅ SELECTED ID
         const level = $(this).data('level');
 
-        console.log('Selected category ID:', selectedValue);
-
+        selected_category_id = selectedValue;
+        if (selectedValue == '') {
+          loadCategories(null, 0);
+        }
         if (selectedValue) {
           loadCategories(selectedValue, level);
         }
@@ -377,32 +294,34 @@ if (!$this->session->feedback_login_id) {
       toastr.warning(a)
     }
 
+    function err(a) {
+      toastr.error(a)
+    }
+
     $('#btnSearch').on('click', function() {
 
       const from_date = $('#from_date').val();
       const to_date = $('#to_date').val();
-      const category_id = getFinalCategory();
+      const category_id = selected_category_id; //getFinalCategory();
 
-      if (from_date === '' || to_date === '' || !category_id.valid) {
+      if (from_date === '' || to_date === '' || selected_category_id === null) {
         existAlert('Please select a date range and category.');
         return;
       }
 
-      $("#view_data").slideDown();
-
       $.getJSON("<?= base_url('admin/Report/get_job_factor_report') ?>", {
         from_date: from_date,
         to_date: to_date,
-        category_id: category_id
+        category_id: selected_category_id
       }, function(d) {
 
-        console.log(d);
-
-        if (!d || !d.job_factors || !d.sentiment) {
-          alert('No data found');
+        if (d.empty_data == true) {
+          err('No data found');
+          $("#view_data").slideUp();
           return;
         }
 
+        $("#view_data").slideDown();
         /* =========================
          * JOB FACTORS
          * ========================= */
@@ -424,16 +343,43 @@ if (!$this->session->feedback_login_id) {
         let s_labels = [];
         let s_values = [];
         let s_meanings = [];
+        let s_percent = [];
 
         $.each(d.sentiment, function(key, row) {
           s_labels.push(row.rating_txt);
           s_values.push(row.count);
           s_meanings.push(row.rating_meaning);
+          s_percent.push(row.percent);
         });
 
-        renderSentimentChart(s_labels, s_values, s_meanings);
+        renderSentimentChart(s_labels, s_values, s_meanings, s_percent);
+
+        $("#sentimentWord").html('<b>SENTIMENT WORD:</b> <br><i>' + d.sentiment_word + "</i> - <badge class='badge badge-" + (d.sentiment_type == 'positive' ? 'success' : 'danger') + "'>" + d.sentiment_type + "</badge>");
+        $("#sentimentWord").append('<br><textarea style="width: 100%;" class="form-control form-control-sm" type="text" id="sentimentWordInput" value="' + d.sentiment_word + '"/></textarea>');
+        $("#sentimentWord").append('<button onclick="askAI()" class="btn btn-primary btn-sm">ASK AI</button>');
+        $("#sentimentWord").append('<br><div id="result"></div>');
       });
     });
+
+    async function askAI() {
+      console.log('aaa');
+      $("#result").text("AI is thinking...");
+
+      try {
+        const response = await $.getJSON(
+          "<?= base_url('admin/Report/get_sentiment_word_ai') ?>", {
+            word: $("#sentimentWordInput").val()
+          }
+        );
+
+        // 👇 waits here until AI responds
+        console.log(response);
+        $("#result").text(response.answer);
+
+      } catch (e) {
+        $("#result").text("AI error");
+      }
+    }
 
     let jobFactorChart = null;
 
@@ -489,7 +435,7 @@ if (!$this->session->feedback_login_id) {
 
     let sentimentChart = null;
 
-    function renderSentimentChart(labels, values, meanings) {
+    function renderSentimentChart(labels, values, meanings, percent) {
 
       const ctx = document.getElementById('sentimentChart').getContext('2d');
 
@@ -517,7 +463,7 @@ if (!$this->session->feedback_login_id) {
               callbacks: {
                 label: function(context) {
                   const i = context.dataIndex;
-                  return `${meanings[i]} : ${context.raw}`;
+                  return `${meanings[i]} : ${context.raw} (${percent[i]}%)`;
                 }
               }
             }

@@ -17,7 +17,7 @@ if (!$this->session->feedback_login_id) {
   <!-- Font Awesome -->
   <link rel="stylesheet" href="<?= base_url() ?>plugins/fontawesome-free/css/all.min.css">
   <!-- icheck bootstrap -->
-  <link rel="stylesheet" href="<?= base_url() ?>plugins/icheck-bootstrap/icheck-bootstrap.min.css">
+  <link rel="stylesheet" href="<?= base_url() ?>dist/css/adminlte.min.css?v=3.2.0">
   <!-- Theme style -->
   <link rel="stylesheet" href="<?= base_url() ?>plugins/datatables-bs4/css/dataTables.bootstrap4.min.css">
   <link rel="stylesheet" href="<?= base_url() ?>plugins/bootstrap/css/bootstrap.min.css">
@@ -121,38 +121,8 @@ if (!$this->session->feedback_login_id) {
       <button class="btn btn-outline-secondary btn-sm" id="openMenu">
         <i class="fas fa-bars text-white"></i>
       </button>
-      <!-- OVERLAY -->
-      <div id="menuOverlay"></div>
 
-      <!-- SIDE MENU -->
-      <div id="sideMenu">
-        <div class="menu-header">
-          <span class="font-weight-bold">Menu</span>
-          <button class="btn btn-sm btn-light" id="closeMenu">
-            <i class="fas fa-times"></i>
-          </button>
-        </div>
-
-        <ul class="list-group list-group-flush">
-          <li class="list-group-item bg-success">
-            <a href="<?= base_url('admin/dashboard') ?>" class="text-white">
-              <i class="fas fa-chart-bar me-2"></i> Dashboard
-            </a>
-          </li>
-
-          <li class="list-group-item">
-            <a href="<?= base_url('admin/report') ?>">
-              <i class="fas fa-chart-bar me-2"></i> Report
-            </a>
-          </li>
-
-          <li class="list-group-item text-danger">
-            <a href="<?= base_url('logout') ?>" class="text-danger">
-              <i class="fas fa-sign-out-alt me-2"></i> Logout
-            </a>
-          </li>
-        </ul>
-      </div>
+      <?php $this->load->view('interface/admin/_menu') ?>
 
     </div>
   </nav>
@@ -323,25 +293,6 @@ if (!$this->session->feedback_login_id) {
     let comment_filter = 0;
     getTable("Comments", 0, 10);
 
-    const openMenu = document.getElementById('openMenu');
-    const closeMenu = document.getElementById('closeMenu');
-    const sideMenu = document.getElementById('sideMenu');
-    const overlay = document.getElementById('menuOverlay');
-
-    openMenu.onclick = () => {
-      sideMenu.classList.add('active');
-      overlay.style.display = 'block';
-    };
-
-    closeMenu.onclick = closeAll;
-    overlay.onclick = closeAll;
-
-    function closeAll() {
-      sideMenu.classList.remove('active');
-      overlay.style.display = 'none';
-    }
-
-
     function validate(form_id) {
       let invalid = 0;
       $($("#" + form_id).find("input").get().reverse()).each(function() {
@@ -500,7 +451,6 @@ if (!$this->session->feedback_login_id) {
         function(data) {
           $tbody.empty();
           var d = JSON.parse(data);
-          console.log(d)
           $('.total').html(d.total);
           $('.positive').html(d.positive);
           $('.negative').html(d.negative);

@@ -126,7 +126,7 @@
         <div id="sectorSection">
             <h2 class="text-center mb-4">Select Sector</h2>
             <div class="row g-3" id="sectorCards">
-                <?php foreach ($this->db->get('sector')->result() as $s) : ?>
+                <?php foreach ($this->db->where('is_active', 1)->get('sector')->result() as $s) : ?>
                     <div class="col-12 col-md-6 mb-3">
                         <div class="card select-card sector-card text-center h-100" data-id="<?= $s->id ?>" data-name="<?= $s->name ?>">
 
@@ -256,7 +256,7 @@
             </table>
 
             <textarea placeholder="Comments/Suggestions..." class="form-control border-primary mb-3" rows="4" name="comment" nr="1" autocomplete="off"></textarea>
-            <button class="btn btn-success w-100" id="btnSubmit">Submit Feedback</button>
+            <button class="btn btn-success w-100 submitBtnPrimary" id="btnSubmit">Submit Feedback</button>
             </form>
         </div>
     </div>
@@ -324,6 +324,14 @@
 
     <script>
         let categoryStack = [];
+        let currentSectorId = null;
+
+        function showSection(sectionId) {
+            $('#sectorSection, #categorySection, #nestedCategorySection, #subcategorySection, #section_feedback')
+                .addClass('d-none');
+
+            $(sectionId).removeClass('d-none');
+        }
         $('#btnBackToSector').on('click', function() {
             $('#categorySection').fadeOut(300, function() {
                 $('#sectorSection').fadeIn(300);
@@ -332,21 +340,22 @@
             $('#btnSectorCategoryNext').prop('disabled', true);
         });
         $('#btnBackToSector').removeClass('d-none');
+
         $(document).on('click', '.sector-card', function() {
 
             $('.sector-card').removeClass('active');
             $(this).addClass('active');
 
-            const sectorId = $(this).data('id');
+            currentSectorId = $(this).data('id');
             const sectorName = $(this).data('name');
 
-            $('[name=sector_id]').val(sectorId);
-            $("#formSector").val(sectorName);
+            $('[name=sector_id]').val(currentSectorId);
+            $('#formSector').val(sectorName);
 
             categoryStack = [];
 
-            $('#sectorSection').hide();
-            loadCategoryLevel(null, sectorId, 'Select Category');
+            showCategorySection(); // 🔥 IMPORTANT
+            loadCategoryLevel(null, currentSectorId, 'Select Category');
         });
 
         $(document).on('click', '.category-card', function() {
@@ -361,7 +370,9 @@
                 id,
                 name
             });
-            $("[name=category_id]").val(id);
+
+            $('[name=category_id]').val(id);
+
             loadCategoryLevel(id, null, name);
         });
 
@@ -376,6 +387,7 @@
             $('#section_sector_category').hide();
             $('#section_feedback').show();
         });
+
         $(document).on('click', '.nested-category-card', function() {
 
             $('.nested-category-card').removeClass('active');
@@ -392,21 +404,66 @@
             loadCategoryLevel(id, name);
         });
 
-        $('#btnBack').click(function() {
+        $('#btnBack, #btnBackLevel').off().on('click', function() {
 
             categoryStack.pop();
 
             // Back to sector
             if (categoryStack.length === 0) {
-                $('#categorySection').hide();
-                $('#sectorSection').show();
+                showSection('#sectorSection');
                 return;
             }
 
             // Back one level
             const prev = categoryStack[categoryStack.length - 1];
+
+            $('#formCategory').val(
+                categoryStack.map(c => c.name).join(' → ')
+            );
+
             loadCategoryLevel(prev.id, null, prev.name);
         });
+
+        $('#btnBackToCategory').on('click', function() {
+            showSection('#categorySection');
+            $('[name=subcategory_id]').val('');
+        });
+
+        $('#btnBack').off().on('click', function() {
+
+            categoryStack = []; // reset stack
+
+            $('#categorySection').hide();
+            $('#sectorSection').show();
+            // 🔙 BACK ONE CATEGORY LEVEL
+            const prev = categoryStack[categoryStack.length - 1];
+
+            $('#formCategory').val(
+                categoryStack.map(c => c.name).join(' → ')
+            );
+
+            loadCategoryLevel(prev.id, null, prev.name);
+        });
+
+        function showCategorySection() {
+            $('#sectorSection').hide();
+            $('#categorySection').removeClass('d-none').show();
+        }
+        // $('#btnBack').click(function() {
+
+        //     categoryStack.pop();
+
+        //     // Back to sector
+        //     if (categoryStack.length === 0) {
+        //         $('#categorySection').hide();
+        //         $('#sectorSection').show();
+        //         return;
+        //     }
+
+        //     // Back one level
+        //     const prev = categoryStack[categoryStack.length - 1];
+        //     loadCategoryLevel(prev.id, null, prev.name);
+        // });
 
         $('#btnBackLevel').click(function() {
 
@@ -553,10 +610,11 @@
                     $("#form_save_data" + formId + " .submitBtnPrimary").html("<span class=\"fa fa-spinner fa-pulse\"></span>");
                 },
                 success: function(data) {
-                    var d = JSON.parse(data);
-                    if (d.success == true) {
+                    console.log(data)
+                    // var d = JSON.parse(data);
+                    if (data.success == true) {
                         successAlert("Survey Form Successfully Submitted!");
-                        clear_form(formId);
+                        // clear_form(formId);
                         setTimeout(function() {
                             location.reload();
                         }, 1000)
@@ -570,8 +628,8 @@
                     } else {
                         failAlert("Something went wrong!");
                     }
-                    $("#form_save_data" + formId + " .submitBtnPrimary").attr("disabled", false);
-                    $("#form_save_data" + formId + " .submitBtnPrimary").html(a);
+                    // $("#form_save_data" + formId + " .submitBtnPrimary").attr("disabled", false);
+                    // $("#form_save_data" + formId + " .submitBtnPrimary").html(a);
                 }
             };
             $("#form_save_data" + formId).ajaxForm(saveData);
@@ -715,9 +773,12 @@
 
                 let res = JSON.parse(data);
 
-                // ✅ NO MORE CHILD → GO FEEDBACK
+                // 🔥 NO CHILD → GO FEEDBACK
                 if (res.length === 0) {
+
                     const final = categoryStack[categoryStack.length - 1];
+                    if (!final) return; // safety
+
                     $('[name=final_category_id]').val(final.id);
 
                     $('#section_sector_category').hide();
@@ -732,14 +793,18 @@
                 let html = '';
                 res.forEach(r => {
                     html += `
-                <div class="col-12">
-                    <div class="card text-center p-3 select-card category-card"
-                         data-id="${r.id}"
-                         data-name="${r.name}">
-                        <i class="fa-solid fa-layer-group fa-5x mb-3"></i>
-                        <strong>${r.name}</strong>
-                    </div>
-                </div>`;
+            <div class="col-12">
+                <div class="card text-center p-3 select-card category-card"
+                     data-id="${r.id}"
+                     data-name="${r.name}">
+                    <center>
+                        <img src="${r.img_path || "<?= base_url('dist/img/SMCCnewlogo_5x6.png') ?>"}"
+                             width="65" height="65"
+                             class="rounded border shadow-sm mb-2">
+                    </center>
+                    <strong>${r.name}</strong>
+                </div>
+            </div>`;
                 });
 
                 $('#categoryCards').html(html);
