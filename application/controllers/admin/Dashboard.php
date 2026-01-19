@@ -36,7 +36,7 @@ class Dashboard extends MY_Controller
     function highlight_sentiment_words($comment, $words)
     {
         foreach ($words as $wordInfo) {
-            $word = $wordInfo->word;#preg_quote($wordInfo->word, '/');
+            $word = $wordInfo->word; #preg_quote($wordInfo->word, '/');
             $type = $wordInfo->type;
             $weight = $wordInfo->weight ?? 1; // default 1 if not provided
 
@@ -61,6 +61,7 @@ class Dashboard extends MY_Controller
     {
         $from_date = $this->input->get('from');
         $to_date   = $this->input->get('to');
+        $category_id = $this->input->get('category_id');
         $this->evaluate_all_feedback_sentiment();
 
         $result = [
@@ -76,8 +77,17 @@ class Dashboard extends MY_Controller
        DATE FILTER
        ------------------------------- */
         $dateWhere = "";
+        $dateWhere2 = "";
+
+        if ($category_id) {
+            $firstDegreeIds = $this->getFirstDegreeCategoryIds($category_id);
+            $category_ids = $this->getCategoryAndChildrenIds($category_id);
+            $dateWhere .= " AND f.category_id IN ($category_ids)";
+            $dateWhere2 .= " AND f.category_id IN ($firstDegreeIds)";
+        }
         if ($from_date && $to_date) {
-            $dateWhere = "AND f.date_created BETWEEN '{$from_date}' AND '{$to_date}'";
+            $dateWhere .= " AND (f.date_created BETWEEN '{$from_date}' AND '{$to_date}')";
+            $dateWhere2 .= " AND (f.date_created BETWEEN '{$from_date}' AND '{$to_date}')";
         }
 
         /* =========================================================
@@ -105,26 +115,59 @@ class Dashboard extends MY_Controller
         /* =========================================================
        2. CATEGORY ROOT COUNTS
        ========================================================= */
-        $feedback_category = $this->db->query("
-        SELECT
-            v.root_name,
-            COUNT(f.id) AS count
-        FROM feedback f
-        JOIN (WITH RECURSIVE category_root AS (
-                SELECT id AS category_id, id AS root_id, name AS root_name, parent_id
-                FROM category
-                WHERE parent_id IS NULL
-                UNION ALL
-                SELECT c.id, cr.root_id, cr.root_name, c.parent_id
-                FROM category c
-                JOIN category_root cr ON c.parent_id = cr.category_id
-            )
-            SELECT * FROM category_root ) v ON v.category_id = f.category_id
-        WHERE 1=1
-        {$dateWhere}
-        GROUP BY v.root_name
-    ")->result();
 
+        if (!$category_id) {
+            $qqq = $this->db->query("
+                SELECT
+                    v.root_name,
+                    COUNT(f.id) AS count
+                FROM feedback f
+                JOIN (WITH RECURSIVE category_root AS (
+                        SELECT id AS category_id, id AS root_id, name AS root_name, parent_id
+                        FROM category
+                        WHERE parent_id IS NULL
+                        UNION ALL
+                        SELECT c.id, cr.root_id, cr.root_name, c.parent_id
+                        FROM category c
+                        JOIN category_root cr ON c.parent_id = cr.category_id
+                    )
+                    SELECT * FROM category_root ) v ON v.category_id = f.category_id
+                WHERE 1=1
+                {$dateWhere}
+                GROUP BY v.root_name
+            ");
+        }else{
+            $qqq = $this->db->query("
+                WITH RECURSIVE category_tree AS (
+                    -- 1st degree children become GROUP HEADS
+                    SELECT
+                        id AS category_id,
+                        id AS group_id,
+                        name AS root_name
+                    FROM category
+                    WHERE parent_id = {$category_id}
+
+                    UNION ALL
+
+                    -- attach all deeper children to the same group_id
+                    SELECT
+                        c.id,
+                        ct.group_id,
+                        ct.root_name
+                    FROM category c
+                    JOIN category_tree ct ON c.parent_id = ct.category_id
+                )
+                SELECT
+                    ct.root_name,
+                    COUNT(f.id) AS count
+                FROM feedback f
+                JOIN category_tree ct ON ct.category_id = f.category_id
+                {$dateWhere}
+                GROUP BY ct.group_id, ct.root_name
+                ORDER BY count DESC
+            ");
+        }
+        $feedback_category = $qqq->result();
         foreach ($feedback_category as $row) {
             $result['root_names'][] = [
                 'name'  => $row->root_name,
@@ -145,11 +188,16 @@ class Dashboard extends MY_Controller
         WHERE 1=1
         {$dateWhere}
         GROUP BY fsw.type, fsw.word
-        ORDER BY fsw.type, count DESC
+        ORDER BY count DESC
         LIMIT 10
     ")->result();
-
-        $result['top_words'] = $topWords;
+        foreach ($topWords as $row) {
+            $result['top_words'][] = [
+                'sentiment' => $row->sentiment,
+                'name'      => $row->name,
+                'count'     => (int) $row->count
+            ];
+        }
 
         /* -------------------------------
        OUTPUT
@@ -170,12 +218,17 @@ class Dashboard extends MY_Controller
 
         if (isset($requestData['from'])) $from = $requestData['from'];
         if (isset($requestData['to']))   $to   = $requestData['to'];
+        if (isset($requestData['category_id'])) $category_id = $requestData['category_id'];
 
         $comment_filter = isset($requestData['comment_filter'])
             ? (int)$requestData['comment_filter']
             : 0;
 
-        $dateWhere = "f.date_created BETWEEN '{$from}' AND '{$to}'";
+        $dateWhere = "(f.date_created BETWEEN '{$from}' AND '{$to}')";
+        if (isset($requestData['category_id']) && $requestData['category_id'] !== '') {
+            $category_ids = $this->getCategoryAndChildrenIds($category_id);
+            $dateWhere .= " AND f.category_id IN ($category_ids)";
+        }
 
         /* Sentiment filter */
         $filter_where = "";
@@ -226,20 +279,13 @@ class Dashboard extends MY_Controller
         LIMIT {$offset}, {$limit}
     ");
 
-        /* Sentiment words */
-        $sentimentWords = $this->db->query("
-        SELECT word, type
-        FROM sentiment_words
-        WHERE type IN ('positive','negative')
-        ORDER BY LENGTH(word) DESC
-    ")->result();
 
         $data = [];
 
         foreach ($dataQuery->result() as $row) {
 
             // Highlight words (no scoring here)
-            $analysis = $this->analyzeSentiment($row->comment, $sentimentWords);
+            $analysis = $this->analyzeSentiment($row->comment);
 
             $highlighted = $row->comment;
             foreach ($analysis['matched'] as $m) {
@@ -268,13 +314,22 @@ class Dashboard extends MY_Controller
         ]);
     }
 
-    function analyzeSentiment($comment, $sentimentWords)
+    function analyzeSentiment($comment)
     {
         // Lowercase & remove punctuation
         $text = strtolower($comment);
         $text = preg_replace('/[.,!?:;]/', ' ', $text);
 
         $matched = [];
+
+
+        /* Sentiment words */
+        $sentimentWords = $this->db->query("
+            SELECT word, type
+            FROM sentiment_words
+            WHERE type IN ('positive','negative')
+            ORDER BY LENGTH(word) DESC
+        ")->result();
 
         foreach ($sentimentWords as $sw) {
             $word = strtolower($sw->word);

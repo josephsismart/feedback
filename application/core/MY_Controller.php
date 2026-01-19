@@ -21,6 +21,51 @@ class MY_Controller extends CI_Controller
         return $data;
     }
 
+    public function getCategoryAndChildrenIds($category_id)
+    {
+        if (!$category_id) {
+            return '';
+        }
+
+        $sql = "
+        WITH RECURSIVE category_tree AS (
+            SELECT id
+            FROM category
+            WHERE id = ?
+
+            UNION ALL
+
+            SELECT c.id
+            FROM category c
+            INNER JOIN category_tree ct ON c.parent_id = ct.id
+        )
+        SELECT id FROM category_tree
+    ";
+
+        $query = $this->db->query($sql, [$category_id]);
+        $rows  = $query->result_array();
+
+        $ids = array_column($rows, 'id');
+
+        return implode(',', $ids); // "1,2,3,4,5"
+    }
+
+    public function getFirstDegreeCategoryIds($category_id)
+    {
+        if (!$category_id) {
+            return '';
+        }
+
+        $query = $this->db->select('id')
+            ->from('category')
+            ->where('parent_id', $category_id)
+            ->get();
+
+        $rows = $query->result_array();
+
+        return implode(',', array_column($rows, 'id'));
+    }
+
     public function ask($question)
     {
         header('Content-Type: application/json');
@@ -85,10 +130,9 @@ class MY_Controller extends CI_Controller
             - Return JSON array only
             - Do not include explanations or extra text
             - Do not translate, rephrase, shorten, spell-correct, invent, or summarize words
-            - Do not hallucinate or add words that are not in the comment
             - Do NOT translate or summarize
-            - Keep original words exactly
             - Learn Bisaya, Tagalog, English, and mixed comments
+            - If a target is mentioned once and subsequent clauses refer to "the other", "another", or implied subject, reuse the last explicit target
             - Modifiers in Bisaya: 
                 - Positive: Paspas, Nindot, Maayo kaayo, Buotan, Helpful
                 - Negative: Hinay, Libog, Dili klaro, Rude, Delayed
@@ -98,14 +142,6 @@ class MY_Controller extends CI_Controller
             - Treat "long line", "long queue", "long waiting time" as NEGATIVE experience
             - Split sentences by ".", "and", "ug", "pero" and evaluate each clause independently
             - Always extract **modifier + target together**
-            - Do NOT return modifiers alone
-            - Only return phrases where **both sentiment modifier and target** are included 
-            - Do NOT return modifiers alone
-            - Only return phrases where **both sentiment modifier and target** are included 
-            - Do NOT return modifiers alone
-            - Only return phrases where **both sentiment modifier and target** are included 
-            - Do NOT return modifiers alone
-            - Only return phrases where **both sentiment modifier and target** are included 
             - Do NOT return modifiers alone
             - Only return phrases where **both sentiment modifier and target** are included 
 
@@ -164,6 +200,9 @@ class MY_Controller extends CI_Controller
             {"word":"ang staff kay bastos","type":0},
             {"word":"hinay ang proseso","type":0},
 
+            {"word":"registrar staff is good","type":1},
+            {"word":"registrar staff is not good","type":0},
+            {"word":"registrar staff is very rude","type":0},
             {"word":"rude cashier staff","type":0},
             {"word":"long line in cashier","type":0},
             {"word":"the cashier staff is rude","type":0},

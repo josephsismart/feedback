@@ -349,9 +349,107 @@ class Controller extends MY_Controller
     }
 
 
-    
 
-    
+    function getServices()
+    {
+        $requestData = $_REQUEST;
+        $person_id  = $this->session->feedback_login_id;
+        $searchValue = isset($requestData['search']['value']) ? $requestData['search']['value'] : '';
+
+        // Calculate pagination parameters using the separate function
+        list($limit, $offset) = $this->calculatePagination($requestData);
+
+        // Query to get total record count
+        $thisQuery = $this->db->query("SELECT COUNT(1) AS total
+                                            FROM service p
+                                        WHERE name LIKE '%$searchValue%' OR description LIKE '%$searchValue%'");
+
+        $totalRecords = $thisQuery->row()->total;
+
+        $query = $this->db->query("SELECT * FROM service
+                                    WHERE name LIKE '%$searchValue%' OR description LIKE '%$searchValue%'
+                                    ORDER BY id DESC, name
+                                    LIMIT $limit OFFSET $offset");
+
+        $data = array();
+        $cc = $offset + 1;
+        foreach ($query->result() as $key => $value) {
+            $is_a_v = $value->is_active;
+            $is_active = $is_a_v == 1 ? "<span class='badge bg-success'>ACTIVE</span>" : "<span class='badge bg-danger'>INACTIVE</span>";
+            $name = "<a href='javascript:void(0)'
+                        class='text-decoration-none'
+                        onclick='edit(
+                            \"#form_save_dataServices\",
+                            " . json_encode($value) . "
+                        )'>
+                        <i class='fas fa-pencil-alt'></i>
+                    </a> " . $value->name;
+            $data[] = array(
+                $name,
+                $is_active,
+            );
+        } // Prepare the response data in the required format
+        $response = array(
+            'draw' => intval($requestData['draw']),
+            'recordsTotal' => intval($totalRecords),
+            'recordsFiltered' => intval($totalRecords), // For simplicity, assuming no filtering is applied
+            'data' => $data,
+        );
+        echo json_encode($response);
+    }
+
+    function saveServices()
+    {
+        $this->db->trans_begin();
+        $true = ["success"   => true];
+        $false = ["success"   => false];
+        $data = [];
+        $id = $this->input->post("id");
+        $name = $this->input->post("name");
+        $description = $this->input->post("description");
+        $active = $this->input->post("is_active");
+
+        if ($id == "" || $id == null) {
+            $exist = $this->db->query("SELECT * FROM service WHERE name = '$name'")->num_rows();
+            if ($exist > 0) {
+                $false += ["message"   => "Service already exists!", "exist"   => true];
+                $ret = $false;
+                echo json_encode($ret);
+                return;
+            }
+        }
+
+        $data = [
+            "name" => $name,
+            "description" => $description,
+            "is_active" => $active,
+            "created_by_person_id" => $this->session->feedback_login_id,
+            "is_active" => $id == "" ? 1 : $active
+        ];
+
+        $isSuccess = false;
+
+        if (!empty($id)) {
+            // update
+            $isSuccess = $this->db->update("service", $data, ["id" => $id]);
+        } else {
+            // insert
+            $isSuccess = $this->db->insert("service", $data);
+        }
+
+        $ret = $isSuccess
+            ? ($true  + ["message" => "Successfully saved!"])
+            : ($false + ["message" => "Something went wrong!"]);
+
+
+        if ($this->db->trans_status() === false) {
+            $this->db->trans_rollback();
+        } else {
+            $this->db->trans_commit();
+        }
+
+        echo json_encode($ret);
+    }
 }
 
 /* End of file Home.php */

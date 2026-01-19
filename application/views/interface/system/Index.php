@@ -235,7 +235,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <?php $query = $this->db->query("SELECT * FROM service");
+                    <?php $query = $this->db->query("SELECT * FROM service WHERE is_active = 1");
                     foreach ($query->result() as $row) {
                         $rowId = $row->id;
                         echo "

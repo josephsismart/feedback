@@ -73,13 +73,18 @@
                 <i class="fas fa-chart-bar me-2"></i> Report
             </a>
         </li>
-
-        <li class="list-group-item <?= $current_location == 'controller' ? 'bg-success' : '' ?>">
-            <a href="<?= base_url('admin/controller') ?>" class="<?= $current_location == 'controller' ? 'text-white' : '' ?>">
-                <i class="fas fa-cog fa-spin me-2"></i> Contoller
-            </a>
-        </li>
-
+        <?php if ($this->session->feedback_login_id == 1) { ?>
+            <li class="list-group-item <?= $current_location == 'controller' ? 'bg-success' : '' ?>">
+                <a href="<?= base_url('admin/controller') ?>" class="<?= $current_location == 'controller' ? 'text-white' : '' ?>">
+                    <i class="fas fa-cog fa-spin me-2"></i> Contoller
+                </a>
+            </li>
+            <li class="list-group-item <?= $current_location == 'useraccount' ? 'bg-success' : '' ?>">
+                <a href="<?= base_url('admin/useraccount') ?>" class="<?= $current_location == 'useraccount' ? 'text-white' : '' ?>">
+                    <i class="fas fa-user me-2"></i> Useraccount
+                </a>
+            </li>
+        <?php } ?>
 
         <li class="list-group-item text-danger">
             <a href="<?= base_url('logout') ?>" class="text-danger">

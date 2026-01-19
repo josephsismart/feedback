@@ -31,7 +31,8 @@ class Login extends MY_Controller
         $data = [];
         // Use prepared statements to prevent SQL injection
         $chck = $this->db->query(
-            "SELECT t1.id,t1.password, t1.name, t1.username FROM user t1 
+            "SELECT t1.id,t1.password, t1.name, t1.username, t2.category_id_list FROM user t1 
+             LEFT JOIN user_type t2 ON t1.user_type_id = t2.id
                                      WHERE t1.password = ? AND t1.username = ? LIMIT 1",
             array($password, $username)
         );
@@ -45,6 +46,7 @@ class Login extends MY_Controller
                 "feedback_login_name"       => $row1->name, // $value->level,
                 "feedback_login_uri"        => 'admin',
                 "feedback_login_landing"    => 'dashboard',
+                "feedback_login_category_id_list"    => $row1->category_id_list,
             ];
 
             $this->session->set_userdata($data);
@@ -74,6 +76,7 @@ class Login extends MY_Controller
             "feedback_login_level"          => '',
             "feedback_login_uri"            => '',
             "feedback_login_landing"        => '',
+            "feedback_login_category_id_list" => '',
             "feedback_login_prsnnl_Id"      => '',
 
 

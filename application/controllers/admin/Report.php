@@ -120,42 +120,67 @@ class Report extends MY_Controller
             'neutral'  => ['rating_txt' => 'neutral',  'rating_meaning' => 'Neutral', 'count' => 0],
         ];
 
-        
+
 
         $sql_sentiment_word = "WITH RECURSIVE category_tree AS (
-                                SELECT id
-                                FROM category
-                                WHERE id = $category_id
+                                    SELECT id
+                                    FROM category
+                                    WHERE id = $category_id
 
-                                UNION ALL
+                                    UNION ALL
 
-                                SELECT c.id
-                                FROM category c
-                                INNER JOIN category_tree ct ON c.parent_id = ct.id
-                            )
-                            SELECT
-                                sw.word        AS sentiment_word,
-                                sw.type   AS sentiment_type,
-                                COUNT(*)       AS count
-                            FROM feedback f
-                            INNER JOIN sentiment_words sw
-                                ON POSITION(LOWER(sw.word) IN LOWER(f.comment)) > 0
-                            WHERE f.date_created BETWEEN '$from_date' AND '$to_date'
-                            AND f.category_id IN (SELECT id FROM category_tree)
-                            GROUP BY sw.word
-                            ORDER BY count DESC
-                            LIMIT 1";
-                            
+                                    SELECT c.id
+                                    FROM category c
+                                    INNER JOIN category_tree ct ON c.parent_id = ct.id
+                                ),
+                                sentiment_word_counts AS (
+                                    SELECT
+                                        sw.word AS sentiment_word,
+                                        sw.type AS sentiment_type,
+                                        COUNT(*) AS sentiment_count
+                                    FROM feedback f
+                                    INNER JOIN sentiment_words sw
+                                        ON POSITION(LOWER(sw.word) IN LOWER(f.comment)) > 0
+                                    WHERE f.date_created BETWEEN '$from_date' AND '$to_date'
+                                    AND f.category_id IN (SELECT id FROM category_tree)
+                                    GROUP BY sw.word, sw.type
+                                ),
+                                ranked AS (
+                                    SELECT *,
+                                        ROW_NUMBER() OVER (
+                                            PARTITION BY sentiment_type
+                                            ORDER BY sentiment_count DESC
+                                        ) AS rn
+                                    FROM sentiment_word_counts
+                                )
+                                SELECT
+                                    sentiment_word,
+                                    sentiment_type,
+                                    sentiment_count
+                                FROM ranked
+                                WHERE rn = 1";
+
 
         $query_sentiment_word = $this->db->query($sql_sentiment_word);
-        $rows_sentiment_word = $query_sentiment_word->result_array();
-        // echo $rows_sentiment;
+        $rows_sentiment_word  = $query_sentiment_word->result_array();
+
         foreach ($rows_sentiment_word as $row) {
-            $defaults['sentiment_word'] = $row['sentiment_word'];
-            // $defaults['sentiment_word_ai'] = $this->ask($row['sentiment_word'])['text'];
-            $defaults['sentiment_type'] = $row['sentiment_type'];
+
+            if ($row['sentiment_type'] === 'positive') {
+                $defaults['positive_word']  = $row['sentiment_word'];
+                $defaults['positive_count'] = $row['sentiment_count'];
+            }
+
+            if ($row['sentiment_type'] === 'negative') {
+                $defaults['negative_word']  = $row['sentiment_word'];
+                $defaults['negative_count'] = $row['sentiment_count'];
+
+                // 🔥 send to AI for suggestion
+                // $defaults['ai_suggestion'] =
+                //     $this->ask("Users often complain about '{$row['sentiment_word']}'. Suggest improvements.")['text'];
+            }
         }
-        
+
 
         $total = 0;
         foreach ($rows_sentiment as $row) {

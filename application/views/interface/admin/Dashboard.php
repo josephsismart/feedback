@@ -149,7 +149,63 @@ if (!$this->session->feedback_login_id) {
         <label class="small text-muted">To Date</label>
         <input type="date" name="to_date" id="to_date" class="form-control form-control-sm" value="<?= Date('Y-m-d') ?>" required>
       </div>
+      <div class="col-md-3">
+        <label class="small text-muted">Category</label>
+        <select name="category_id" id="category_id" class="form-control text-uppercase form-control-sm" nr="1">
 
+          <?php
+          // 1) get all categories once
+          $logid = $this->session->feedback_login_id;
+          if ($logid == 1) {
+            echo '<option value="">NO FILTER</option>';
+          }
+
+          $categories = $this->db
+            ->order_by('parent_id ASC, order_by ASC')
+            ->where('is_active', 1)
+            ->get('category')
+            ->result();
+
+          // 2) group by parent_id
+          $tree = [];
+          foreach ($categories as $cat) {
+            $tree[$cat->parent_id][] = $cat;
+          }
+
+          // 3) recursive printer (DEFINED HERE)
+
+          $renderOptions = function ($parent_id = null, $level = 0) use (&$renderOptions, $tree) {
+
+            if (!isset($tree[$parent_id])) return;
+            $c_id = [$this->session->feedback_login_category_id_list];
+            $l_id = $this->session->feedback_login_id;
+
+            foreach ($tree[$parent_id] as $cat) {
+
+              // indent (3 spaces per level)
+              $indent = str_repeat('&nbsp;&nbsp;&nbsp;', $level);
+              if ($l_id != 1) {
+                if (in_array($cat->id, $c_id)) {
+                  echo '<option value="' . $cat->id . '" selected>';
+                  echo $indent . $cat->name;
+                  echo '</option>';
+                }
+              } else {
+                echo '<option value="' . $cat->id . '">';
+                echo $indent . $cat->name;
+                echo '</option>';
+              }
+              // children
+              $renderOptions($cat->id, $level + 1);
+            }
+          };
+
+          // 4) render tree
+          $renderOptions();
+          ?>
+        </select>
+
+      </div>
       <div class="col-md-2 d-flex align-items-end">
         <button class="btn btn-success btn-sm w-100" id="btnSearch">
           <i class="fas fa-search"></i> Search
@@ -217,14 +273,15 @@ if (!$this->session->feedback_login_id) {
 
       <div class="card mb-4 shadow-sm">
         <div class="card-header">
-          <h6 class="mb-0 font-weight-bold">Top 10 Most Mentioned Words</h6>
+          <h6 class="mb-0 font-weight-bold">Top 10 Most Mentioned Sentiments</h6>
         </div>
         <div class="card-body p-0">
           <table class="table table-sm table-striped mb-0" id="topWordsTable">
             <thead class="thead-light">
               <tr>
                 <th>#</th>
-                <th>Word</th>
+                <th>Sentiments</th>
+                <th>Polarity</th>
                 <th>Frequency</th>
               </tr>
             </thead>
@@ -442,11 +499,13 @@ if (!$this->session->feedback_login_id) {
     $('#btnSearch').click(function() {
       let from_date = $("#from_date").val();
       let to_date = $("#to_date").val();
+      let category_id = $("#category_id").val();
       let $tbody = $("#topWordsBody");
 
       $.get("<?= base_url("admin/Dashboard/getFeedbackReports") ?>", {
           from: from_date,
-          to: to_date
+          to: to_date,
+          category_id: category_id
         },
         function(data) {
           $tbody.empty();
@@ -487,6 +546,7 @@ if (!$this->session->feedback_login_id) {
                 <tr>
                     <td>${i + 1}</td>
                     <td>${d.top_words[i].name}</td>
+                    <td>${d.top_words[i].sentiment}</td>
                     <td>${d.top_words[i].count}</td>
                 </tr>
             `);
@@ -543,6 +603,7 @@ if (!$this->session->feedback_login_id) {
             d.search.value = $('#tbl' + tableId + '_filter input').val();
             d.from = $("#from_date").val();
             d.to = $("#to_date").val();
+            d.category_id = $("#category_id").val();
             d.comment_filter = comment_filter;
           }
         },

@@ -83,7 +83,7 @@ $uri = $this->session->feedback_login_uri;
 
 		<div class="card card-purple">
 			<div class="card-header">
-				<h3 class="card-title">Sentiment Words</h3>
+				<h3 class="card-title">User Account</h3>
 				<div class="card-tools">
 					<button type="button" class="btn btn-tool" data-card-widget="collapse">
 						<i class="fas fa-minus"></i>
@@ -94,30 +94,64 @@ $uri = $this->session->feedback_login_uri;
 				<div class="row">
 					<div class="col-sm-12">
 						<!-- text input -->
-						<?= form_open(base_url($uri . '/Controller/saveSentimentWord'), 'id="form_save_dataSentimentWord"'); ?>
+						<?= form_open(base_url($uri . '/Useraccount/saveUserAccount'), 'id="form_save_dataUserAccount"'); ?>
 						<input type="hidden" name="id" nr="1">
-						<div class="form-group">
-							<label>Sentiment Words</label>
-							<div class="input-group">
-								<input type="text" style="width:30%" class="form-control text-uppercase" placeholder="Enter Sentiment Words" name="word" autocomplete="off">
-								<select class="form-control text-uppercase" name="type_int">
-									<option value="1">Positive</option>
-									<option value="0">Negative</option>
-								</select>
-								<span class="input-group-append action-buttons">
-									<button type="submit" class="btn btn-success btn-save">Save</button>
-								</span>
+						<div class="row">
+							<div class="col-12">
+								<div class="form-group">
+									<label>Name</label>
+									<input type="text" class="form-control text-uppercase" placeholder="Enter Name" name="name" autocomplete="off">
+								</div>
+							</div>
+							<div class="col-6">
+								<div class="form-group">
+									<label>Username</label>
+									<input type="text" class="form-control" placeholder="Enter Username" name="username" autocomplete="off">
+								</div>
+							</div>
+							<div class="col-6">
+								<div class="form-group">
+									<label>User Type</label>
+									<select class="form-control" name="user_type_id">
+										<option value="">Select User Type</option>
+										<?php
+										$query = $this->db->query("SELECT * FROM user_type");
+										$user_types = $query->result();
+										foreach ($user_types as $user_type) {
+											// indent (3 spaces per level)
+											$indent = str_repeat('&nbsp;&nbsp;&nbsp;', $level);
+
+											echo '<option value="' . $user_type->id . '">';
+											echo $indent . $user_type->name;
+											echo '</option>';
+										}
+										?>
+									</select>
+								</div>
+							</div>
+							<div class="col-12">
+								<div class="form-group">
+									<label>Password</label>
+									<div class="input-group">
+										<input type="password" class="form-control" placeholder="Enter Password" name="password" autocomplete="off">
+										<input type="password" class="form-control" placeholder="Enter Confirm Password" name="confirm_password" autocomplete="off">
+
+										<span class="input-group-append action-buttons">
+											<button type="submit" class="btn btn-success btn-save">Save</button>
+										</span>
+									</div>
+								</div>
 							</div>
 						</div>
 						<?= form_close() ?>
 						<div class="card-body p-2" style="overflow: auto;">
-							<table id="tblSentimentWord" class="table table-bordered table-sm table-striped table-hover" width="100%">
+							<table id="tblUserAccount" class="table table-bordered table-sm table-striped table-hover" width="100%">
 								<thead>
 									<tr>
-										<th width="1">No.</th>
-										<th width="80%">Sentiment Words</th>
-										<th width="1">Type</th>
-										<!-- <th width="1">Active</th> -->
+										<th width="1">#</th>
+										<th>Name</th>
+										<th>User Type</th>
+										<th>Username</th>
 									</tr>
 								</thead>
 								<tbody>
@@ -133,9 +167,9 @@ $uri = $this->session->feedback_login_uri;
 
 		<hr>
 
-		<div class="card card-success collapsed-card">
+		<div class="card card-warning collapsed-card">
 			<div class="card-header">
-				<h3 class="card-title">Category</h3>
+				<h3 class="card-title">User Type</h3>
 				<div class="card-tools">
 					<button type="button" class="btn btn-tool" data-card-widget="collapse">
 						<i class="fas fa-plus"></i>
@@ -146,22 +180,20 @@ $uri = $this->session->feedback_login_uri;
 				<div class="row">
 					<div class="col-sm-12">
 						<!-- text input -->
-						<?= form_open(base_url($uri . '/Controller/saveCategory'), 'id="form_save_dataCategory"'); ?>
+						<?= form_open(base_url($uri . '/Useraccount/saveUserType'), 'id="form_save_dataUserType"'); ?>
 						<input type="hidden" name="id" nr="1">
-						<div class="text-center mb-2">
-							<img name="previewPic" src="<?= $system_svg ?>" class="rounded border shadow-sm" onclick="$('[name=picCategory]').trigger('click')" width="70" height="70"><br />
-							<label for="picSecotr" class="mt-2">Upload Image</label>
-							<input name="picCategory" type="file" accept="image/*" onchange="imageView('picCategory','previewPic','imgtargetLink')" nr="1" hidden="">
-							<input name="img_path" type="text" nr="1" hidden="">
-						</div>
+
 
 						<div class="form-group">
-							<label>Category Name</label>
-							<input type="text" class="form-control text-uppercase" placeholder="Enter Category name" name="name" autocomplete="off">
+							<label>Name</label>
+							<div class="input-group">
+								<input type="text" class="form-control text-uppercase" placeholder="Name" name="name" autocomplete="off">
+							</div>
+							<label>Category (Multiple)</label>
+							<div class="input-group">
 
-							<div class="input-group mt-2">
-								<select style="width:30%" name="parent_id" class="form-control text-uppercase" nr="1">
-									<option value="">No Parent Category</option>
+								<select style="width:30%" name="category_id_list[]" multiple class="form-control text-uppercase">
+									<!-- <option value="">Select User Type</option> -->
 
 									<?php
 									// 1) get all categories once
@@ -199,10 +231,6 @@ $uri = $this->session->feedback_login_uri;
 									$renderOptions();
 									?>
 								</select>
-								<select class="form-control text-uppercase" name="is_active">
-									<option value="1">Active</option>
-									<option value="0">Inactive</option>
-								</select>
 								<span class="input-group-append action-buttons">
 									<button type="submit" class="btn btn-success btn-save">Save</button>
 								</span>
@@ -210,128 +238,11 @@ $uri = $this->session->feedback_login_uri;
 						</div>
 						<?= form_close() ?>
 						<div class="card-body p-2" style="overflow: auto;">
-							<table id="tblCategory" class="table table-bordered table-sm table-striped table-hover" width="100%">
+							<table id="tblUserType" class="table table-bordered table-sm table-striped table-hover" width="100%">
 								<thead>
 									<tr>
-										<th width="1">Photo</th>
-										<th width="1">Category</th>
-										<th width="1">Parent Category</th>
-										<th width="1">Active</th>
-									</tr>
-								</thead>
-								<tbody>
-								</tbody>
-							</table>
-						</div>
-
-					</div>
-				</div>
-			</div>
-			<!-- /.card-body -->
-		</div>
-
-		<hr>
-
-		<div class="card card-primary collapsed-card">
-			<div class="card-header">
-				<h3 class="card-title">Sectors</h3>
-				<div class="card-tools">
-					<button type="button" class="btn btn-tool" data-card-widget="collapse">
-						<i class="fas fa-plus"></i>
-					</button>
-				</div>
-			</div>
-			<div class="card-body">
-				<div class="row">
-					<div class="col-sm-12">
-						<!-- text input -->
-						<?= form_open(base_url($uri . '/Controller/saveSector'), 'id="form_save_dataSector"'); ?>
-						<input type="hidden" name="id" nr="1">
-						<div class="text-center mb-2">
-							<img name="previewPic" src="<?= $system_svg ?>" class="rounded border shadow-sm" onclick="$('[name=picSector]').trigger('click')" width="70" height="70"><br />
-							<label for="picSecotr" class="mt-2">Upload Image</label>
-							<input name="picSector" type="file" accept="image/*" onchange="imageView('picSector','previewPic','imgtargetLink')" nr="1" hidden="">
-							<input name="img_path" type="text" nr="1" hidden="">
-						</div>
-
-
-
-						<div class="form-group">
-							<label>Sector Name</label>
-							<div class="input-group">
-								<input style="width:30%" type="text" class="form-control text-uppercase" placeholder="Enter sector name" name="name" autocomplete="off">
-								<select class="form-control text-uppercase" name="is_active">
-									<option value="1">Active</option>
-									<option value="0">Inactive</option>
-								</select>
-								<span class="input-group-append action-buttons">
-									<button type="submit" class="btn btn-success btn-save">Save</button>
-								</span>
-							</div>
-						</div>
-						<?= form_close() ?>
-						<div class="card-body p-2" style="overflow: auto;">
-							<table id="tblSector" class="table table-bordered table-sm table-striped table-hover" width="100%">
-								<thead>
-									<tr>
-										<th width="1">Photo</th>
-										<th width="50">Sector</th>
-										<th width="1">Active</th>
-									</tr>
-								</thead>
-								<tbody>
-								</tbody>
-							</table>
-						</div>
-
-					</div>
-				</div>
-			</div>
-			<!-- /.card-body -->
-		</div>
-		<hr>
-
-		<div class="card card-warning collapsed-card">
-			<div class="card-header">
-				<h3 class="card-title">Job Factor</h3>
-				<div class="card-tools">
-					<button type="button" class="btn btn-tool" data-card-widget="collapse">
-						<i class="fas fa-plus"></i>
-					</button>
-				</div>
-			</div>
-			<div class="card-body">
-				<div class="row">
-					<div class="col-sm-12">
-						<!-- text input -->
-						<?= form_open(base_url($uri . '/Controller/saveServices'), 'id="form_save_dataServices"'); ?>
-						<input type="hidden" name="id" nr="1">
-
-
-						<div class="form-group">
-							<label>Job Factor Name</label>
-							<div class="input-group">
-								<input type="text" class="form-control" placeholder="Enter Job Factor name" name="name" autocomplete="off">
-							</div>
-							<label>Description</label>
-							<div class="input-group">
-								<input style="width:30%" type="text" class="form-control text-uppercase" placeholder="Enter description" name="description" autocomplete="off">
-								<select class="form-control text-uppercase" name="is_active">
-									<option value="1">Active</option>
-									<option value="0">Inactive</option>
-								</select>
-								<span class="input-group-append action-buttons">
-									<button type="submit" class="btn btn-success btn-save">Save</button>
-								</span>
-							</div>
-						</div>
-						<?= form_close() ?>
-						<div class="card-body p-2" style="overflow: auto;">
-							<table id="tblServices" class="table table-bordered table-sm table-striped table-hover" width="100%">
-								<thead>
-									<tr>
-										<th width="50">Job Factor</th>
-										<th width="1">Active</th>
+										<th width="50">User Type</th>
+										<th width="50">Category</th>
 									</tr>
 								</thead>
 								<tbody>
@@ -361,22 +272,15 @@ $uri = $this->session->feedback_login_uri;
 
 	<script>
 		$(function() {
-			let f1 = "Sector";
-			let f2 = "Category";
-			let f3 = "SentimentWord";
-			let f4 = "Services";
-			
-			getTable(f1, 0, 5);
-			saveForm(f1, [f1], null, 0, 5);
 
-			getTable(f2, 0, 5);
-			saveForm(f2, [f2], null, 0, 5);
+			let f1 = "UserType";
+			let f2 = "UserAccount";
 
-			getTable(f3, 0, 10);
-			saveForm(f3, [f3], null, 0, 10);
-			
-			getTable(f4, 0, 10);
-			saveForm(f4, [f4], null, 0, 10);
+			getTable(f1, 0, 10);
+			saveForm(f1, [f1], null, 0, 10);
+
+			getTable(f2, 0, 10);
+			saveForm(f2, [f2], null, 0, 10);
 		});
 
 		function existAlert(a) {
@@ -463,7 +367,7 @@ $uri = $this->session->feedback_login_uri;
 						return false;
 					}
 					a = $("#form_save_data" + formId + " .submitBtnPrimary").text();
-					// $("#form_save_data" + formId + " .submitBtnPrimary").attr("disabled", true);
+					$("#form_save_data" + formId + " .submitBtnPrimary").attr("disabled", true);
 					$("#form_save_data" + formId + " .submitBtnPrimary").html("<span class=\"fa fa-spinner fa-pulse\"></span>");
 				},
 				success: function(data) {
@@ -501,21 +405,39 @@ $uri = $this->session->feedback_login_uri;
 		function validate(form_id) {
 			let invalid = 0;
 			$($("#" + form_id).find("select").get().reverse()).each(function() {
-				var name = $(this).attr("name");
-				var j = clean($(this).attr("name"));
-				var nr = $(this).attr("nr");
-				var multiple = $(this).attr("multiple");
 
+				var name = $(this).attr("name");
+				var j = clean(name);
+				var nr = $(this).attr("nr");
+				var isMultiple = $(this).prop("multiple");
+				var val = $(this).val();
 
 				if (nr != 1) {
-					if (!$(this).val() || $(this).val() == 'null') {
+
+					let isInvalid = false;
+
+					// ✅ MULTIPLE SELECT
+					if (isMultiple) {
+						isInvalid = (!val || val.length === 0);
+					}
+					// ✅ SINGLE SELECT
+					else {
+						isInvalid = (!val || val === 'null');
+					}
+
+					if (isInvalid) {
 						$(this).focus().addClass("is-invalid");
-						$("#" + form_id + " select[name='" + name + "']").focus().next().find('.select2-selection').addClass('has-error');
+
+						// Select2 support
+						$(this).next().find('.select2-selection').addClass('has-error');
+
 						$("#" + form_id + " ." + j).addClass('border-danger');
 						invalid++;
 					} else {
 						$(this).removeClass("is-invalid");
-						$("#" + form_id + " select[name='" + name + "']").focus().next().find('.select2-selection').removeClass('has-error');
+
+						$(this).next().find('.select2-selection').removeClass('has-error');
+
 						$("#" + form_id + " ." + j).removeClass('border-danger');
 					}
 				}
@@ -595,7 +517,7 @@ $uri = $this->session->feedback_login_uri;
 			$("#" + a + " .submitBtnPrimary").attr("disabled", false);
 			$("#" + a + " .submitBtnPrimary").html("Save");
 			$("#" + a + " .clearBtn").html("Clear");
-			$("#" + a + " .submitBtnPrimary").removeClass("btn-info").addClass("btn-primary");
+			$("#" + a + " .submitBtnPrimary").removeClass("btn-warning").addClass("btn-success");
 			$("#" + a + " .clearBtn").removeClass("btn-danger");
 
 			defaultImg('pic', 'previewPic', 'imgtargetLink', 'MALE');
@@ -614,7 +536,7 @@ $uri = $this->session->feedback_login_uri;
 			// Loop through all object keys
 			$.each(data, function(key, value) {
 
-				let $field = $form.find('[name="' + key + '"]');
+				let $field = $form.find('[name="' + key + '"], [name="' + key + '[]"]');
 
 				if ($field.length) {
 
@@ -626,6 +548,24 @@ $uri = $this->session->feedback_login_uri;
 							.filter('[value="' + value + '"]')
 							.prop('checked', true);
 
+					} else if ($field.is('select[multiple]')) {
+
+						let values = [];
+						console.log(value);
+
+						// if value is "1,2,3"
+						if (typeof value === 'string') {
+							values = value.split(',');
+						}
+
+						// if value is already array
+						if (Array.isArray(value)) {
+							values = value;
+						}
+
+						$field.val(values).trigger('change');
+
+						// ✅ NORMAL INPUT / SELECT
 					} else {
 						$field.val(value);
 					}
@@ -657,7 +597,7 @@ $uri = $this->session->feedback_login_uri;
 				$btnGroup.append(`
 					<button type="button"
 							class="btn btn-danger btn-cancel ml-1"
-							onclick="resetForm('${formSelector}')">
+                			onclick="resetForm('${formSelector}')">
 						✖
 					</button>
 				`);
@@ -673,8 +613,9 @@ $uri = $this->session->feedback_login_uri;
 
 
 		function resetForm(formId) {
+			console.log(formId);
 			let $form = $(formId);
-			let $btnGroup = $form.find('.action-buttons');
+			let $btnGroup = $(formId).find('.action-buttons');
 
 			// reset form
 			$form[0].reset();

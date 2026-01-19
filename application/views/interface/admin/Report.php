@@ -102,6 +102,62 @@ if (!$this->session->feedback_login_id) {
         <input type="date" name="to_date" id="to_date" class="form-control form-control-sm" value="<?= Date('Y-m-d') ?>" required>
       </div>
 
+      <div class="col-md-3">
+        <label class="small text-muted">Category</label>
+        <select name="category_id" id="category_id" class="form-control text-uppercase form-control-sm" nr="1">
+          <?php
+          // 1) get all categories once
+
+          $logid = $this->session->feedback_login_id;
+          if ($logid == 1) {
+            echo '<option value="">NO FILTER</option>';
+          }
+
+          $categories = $this->db
+            ->order_by('parent_id ASC, order_by ASC')
+            ->where('is_active', 1)
+            ->get('category')
+            ->result();
+
+          // 2) group by parent_id
+          $tree = [];
+          foreach ($categories as $cat) {
+            $tree[$cat->parent_id][] = $cat;
+          }
+
+          // 3) recursive printer (DEFINED HERE)
+          $renderOptions = function ($parent_id = null, $level = 0) use (&$renderOptions, $tree) {
+
+            if (!isset($tree[$parent_id])) return;
+            $c_id = [$this->session->feedback_login_category_id_list];
+            $l_id = $this->session->feedback_login_id;
+
+            foreach ($tree[$parent_id] as $cat) {
+
+              $indent = str_repeat('&nbsp;&nbsp;&nbsp;', $level);
+              if ($l_id != 1) {
+                if (in_array($cat->id, $c_id)) {
+                  echo '<option value="' . $cat->id . '" selected>';
+                  echo $indent . $cat->name;
+                  echo '</option>';
+                }
+              } else {
+                echo '<option value="' . $cat->id . '">';
+                echo $indent . $cat->name;
+                echo '</option>';
+              }
+              // children
+              $renderOptions($cat->id, $level + 1);
+            }
+          };
+
+          // 4) render tree
+          $renderOptions();
+          ?>
+        </select>
+
+      </div>
+
       <div class="col-md-2 d-flex align-items-end">
         <button class="btn btn-success btn-sm w-100" id="btnSearch">
           <i class="fas fa-search"></i> Search
@@ -111,7 +167,7 @@ if (!$this->session->feedback_login_id) {
       <!-- </form> -->
     </div>
 
-    <div class="col-12">
+    <div class="col-12" hidden>
       <label class="small text-muted">Category</label>
       <div id="categoryWrapper">
       </div>
@@ -302,9 +358,10 @@ if (!$this->session->feedback_login_id) {
 
       const from_date = $('#from_date').val();
       const to_date = $('#to_date').val();
-      const category_id = selected_category_id; //getFinalCategory();
+      // const category_id = selected_category_id; //getFinalCategory();
+      const category_id = $('#category_id').val();
 
-      if (from_date === '' || to_date === '' || selected_category_id === null) {
+      if (from_date === '' || to_date === '' || category_id === '') {
         existAlert('Please select a date range and category.');
         return;
       }
@@ -312,7 +369,7 @@ if (!$this->session->feedback_login_id) {
       $.getJSON("<?= base_url('admin/Report/get_job_factor_report') ?>", {
         from_date: from_date,
         to_date: to_date,
-        category_id: selected_category_id
+        category_id: category_id
       }, function(d) {
 
         if (d.empty_data == true) {
@@ -352,32 +409,39 @@ if (!$this->session->feedback_login_id) {
           s_percent.push(row.percent);
         });
 
+        $("#sentimentWord").html("");
         renderSentimentChart(s_labels, s_values, s_meanings, s_percent);
-
-        $("#sentimentWord").html('<b>SENTIMENT WORD:</b> <br><i>' + d.sentiment_word + "</i> - <badge class='badge badge-" + (d.sentiment_type == 'positive' ? 'success' : 'danger') + "'>" + d.sentiment_type + "</badge>");
-        $("#sentimentWord").append('<br><textarea style="width: 100%;" class="form-control form-control-sm" type="text" id="sentimentWordInput" value="' + d.sentiment_word + '"/></textarea>');
-        $("#sentimentWord").append('<button onclick="askAI()" class="btn btn-primary btn-sm">ASK AI</button>');
-        $("#sentimentWord").append('<br><div id="result"></div>');
+        if (d.negative_word) {
+          $("#sentimentWord").html('<b>SENTIMENT WORD:</b> <br><i>' + d.negative_word + "</i> - <badge class='badge badge-danger'>NEGATIVE</badge>");
+          $("#sentimentWord").append('<br><input style="width: 100%;" class="form-control form-control-sm" type="text" id="negativeSentimentWordInput" value="suggestion for ' + d.negative_word + ' about the school and make it short, more positive, concise and professional, anwer directly to the user, dont let the user to ask you, dont put \'Here\'s a suggestion:\'" hidden/>');
+          $("#sentimentWord").append('<button onclick="askAI(\'negative\')" class="btn btn-primary btn-sm">Generate Suggestion</button>');
+          $("#sentimentWord").append('<br><div id="negativeResult" style="font-style: italic; background-color: #efefefff; padding: 10px; border-radius: 5px;"></div>');
+        }
+        if (d.positive_word) {
+          $("#sentimentWord").append('<br><b>SENTIMENT WORD:</b> <br><i>' + d.positive_word + "</i> - <badge class='badge badge-success'>POSITIVE</badge>");
+          $("#sentimentWord").append('<br><input style="width: 100%;" class="form-control form-control-sm" type="text" id="positiveSentimentWordInput" value="suggestion for ' + d.positive_word + ' about the school and make it short, more positive, concise and professional, anwer directly to the user, dont let the user to ask you, dont put \'Here\'s a suggestion:\'" hidden/>');
+          $("#sentimentWord").append('<button onclick="askAI(\'positive\')" class="btn btn-primary btn-sm">Generate Suggestion</button>');
+          $("#sentimentWord").append('<br><div id="positiveResult" style="font-style: italic; background-color: #efefefff; padding: 10px; border-radius: 5px;"></div>');
+        }
       });
     });
 
-    async function askAI() {
-      console.log('aaa');
-      $("#result").text("AI is thinking...");
+    async function askAI(type) {
+      const word = $("#" + type + "Result").val();
+      $("#" + type + "Result").text("Generating Suggestion...");
 
       try {
         const response = await $.getJSON(
           "<?= base_url('admin/Report/get_sentiment_word_ai') ?>", {
-            word: $("#sentimentWordInput").val()
+            word: $("#" + type + "SentimentWordInput").val()
           }
         );
 
         // 👇 waits here until AI responds
-        console.log(response);
-        $("#result").text(response.answer);
+        $("#" + type + "Result").text(response.answer);
 
       } catch (e) {
-        $("#result").text("AI error");
+        $("#" + type + "Result").text("AI error");
       }
     }
 
