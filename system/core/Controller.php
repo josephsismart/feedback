@@ -50,7 +50,20 @@ defined('BASEPATH') OR exit('No direct script access allowed');
  * @link		https://codeigniter.com/user_guide/general/controllers.html
  */
 class CI_Controller {
-
+	public $benchmark;
+	public $hooks;
+	public $config;
+	public $log;
+	public $utf8;
+	public $uri;
+	public $router;
+	public $output;
+	public $security;
+	public $input;
+	public $lang;
+	public $loader;
+	public $load;
+public $db;
 	/**
 	 * Reference to the CI singleton
 	 *

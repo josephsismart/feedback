@@ -136,7 +136,7 @@ class Dashboard extends MY_Controller
                 {$dateWhere}
                 GROUP BY v.root_name
             ");
-        }else{
+        } else {
             $qqq = $this->db->query("
                 WITH RECURSIVE category_tree AS (
                     -- 1st degree children become GROUP HEADS
@@ -351,6 +351,80 @@ class Dashboard extends MY_Controller
         }
 
         return ['matched' => $matched];
+    }
+
+
+
+    function getMonthlyTrend()
+    {
+        $category_id = $this->input->get('category_id');
+        $months      = (int) ($this->input->get('months') ?: 6); // default last 6 months
+
+        $categoryWhere = "";
+        if ($category_id) {
+            $category_ids  = $this->getCategoryAndChildrenIds($category_id);
+            $categoryWhere = " AND f.category_id IN ($category_ids)";
+        }
+
+        // Build month series for the last N months (current month included)
+        $rows = $this->db->query("
+        SELECT
+            DATE_FORMAT(f.date_created, '%Y-%m') AS month_key,
+            DATE_FORMAT(f.date_created, '%b %Y')  AS month_label,
+            SUM(CASE WHEN fs.sentiment = 'positive' THEN 1 ELSE 0 END) AS positive,
+            SUM(CASE WHEN fs.sentiment = 'negative' THEN 1 ELSE 0 END) AS negative,
+            SUM(CASE WHEN fs.sentiment = 'neutral'  THEN 1 ELSE 0 END) AS neutral,
+            COUNT(fs.id) AS total
+        FROM feedback_sentiment fs
+        JOIN feedback f ON f.id = fs.feedback_id
+        WHERE f.date_created >= DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL {$months} MONTH), '%Y-%m-01')
+          {$categoryWhere}
+        GROUP BY month_key, month_label
+        ORDER BY month_key ASC
+    ")->result();
+
+        // Also get current-month vs last-month delta for stat cards
+        $comparison = $this->db->query("
+        SELECT
+            DATE_FORMAT(f.date_created, '%Y-%m') AS month_key,
+            SUM(CASE WHEN fs.sentiment = 'positive' THEN 1 ELSE 0 END) AS positive,
+            SUM(CASE WHEN fs.sentiment = 'negative' THEN 1 ELSE 0 END) AS negative,
+            SUM(CASE WHEN fs.sentiment = 'neutral'  THEN 1 ELSE 0 END) AS neutral,
+            COUNT(fs.id) AS total
+        FROM feedback_sentiment fs
+        JOIN feedback f ON f.id = fs.feedback_id
+        WHERE f.date_created >= DATE_FORMAT(DATE_SUB(CURDATE(), INTERVAL 2 MONTH), '%Y-%m-01')
+          {$categoryWhere}
+        GROUP BY month_key
+        ORDER BY month_key DESC
+        LIMIT 2
+    ")->result();
+
+        $current_month  = $comparison[0] ?? null;
+        $previous_month = $comparison[1] ?? null;
+
+        $delta = [
+            'total'    => 0,
+            'positive' => 0,
+            'negative' => 0,
+            'neutral'  => 0,
+        ];
+
+        if ($current_month && $previous_month) {
+            foreach (['total', 'positive', 'negative', 'neutral'] as $key) {
+                $prev = (int) $previous_month->$key;
+                $curr = (int) $current_month->$key;
+                $delta[$key] = $prev > 0
+                    ? round((($curr - $prev) / $prev) * 100, 1)
+                    : ($curr > 0 ? 100 : 0);
+            }
+        }
+
+        echo json_encode([
+            'trend'  => $rows,
+            'delta'  => $delta,
+            'labels' => array_column((array) $rows, 'month_label'),
+        ]);
     }
 }
 

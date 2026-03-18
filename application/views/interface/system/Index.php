@@ -611,8 +611,8 @@
                 },
                 success: function(data) {
                     console.log(data)
-                    // var d = JSON.parse(data);
-                    if (data.success == true) {
+                    var d = JSON.parse(data);
+                    if (d.success == true) {
                         successAlert("Survey Form Successfully Submitted!");
                         // clear_form(formId);
                         setTimeout(function() {
@@ -626,6 +626,7 @@
                     } else if (d.fill == true) {
                         existAlert("Please fill in the required fields");
                     } else {
+                        console.log(d);
                         failAlert("Something went wrong!");
                     }
                     // $("#form_save_data" + formId + " .submitBtnPrimary").attr("disabled", false);

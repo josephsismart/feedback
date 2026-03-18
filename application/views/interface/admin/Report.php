@@ -437,8 +437,16 @@ if (!$this->session->feedback_login_id) {
           }
         );
 
-        // 👇 waits here until AI responds
-        $("#" + type + "Result").text(response.answer);
+        console.log(response.answer)
+
+        // // 👇 waits here until AI responds
+        // $("#" + type + "Result").html(response.answer);
+
+        if (response.success) {
+          $("#" + type + "Result").html(`💬 ${response.answer}`); // .html() not .text()
+        } else {
+          $("#" + type + "Result").html(`<span style="color:red;">❌ ${response.answer}</span>`);
+        }
 
       } catch (e) {
         $("#" + type + "Result").text("AI error");

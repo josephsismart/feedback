@@ -49,6 +49,54 @@ defined('BASEPATH') OR exit('No direct script access allowed');
  * @link		https://codeigniter.com/user_guide/libraries/loader.html
  */
 class CI_Loader {
+	public $session;
+	public $database;
+	public $form_validation;
+	public $pagination;
+	public $upload;
+	public $email;
+	public $cart;
+	public $encrypt;
+	public $migration;
+	public $benchmark;
+	public $hooks;
+	public $config;
+	public $uri;
+	public $router;
+	public $output;
+	public $security;
+	public $input;
+	public $lang;
+	public $load;
+	public $db;
+	public $cache;
+	public $zip;
+	public $image_lib;
+	public $table;
+	public $MainModel;
+	public $mainModel;
+	public $log;
+	public $utf8;
+	public $exceptions;
+	public $routing;
+	public $model;
+	public $library;
+	public $helper;
+	public $view;
+	public $vars;
+	public $autoload;
+	public $unit;
+	public $trackback;
+	public $typography;
+	public $calendar;
+	public $javascript;
+	public $xmlrpc;
+	public $shopping_cart;
+	public $template_parser;
+	public $loader;
+	public $global_requestid;
+	public $global_requestid_personnel;
+	public $ftp;
 
 	// All these are set automatically. Don't mess with them.
 	/**
@@ -928,7 +976,12 @@ class CI_Loader {
 		{
 			if ( ! isset($this->$_ci_key))
 			{
-				$this->$_ci_key =& $_ci_CI->$_ci_key;
+				// $this->$_ci_key =& $_ci_CI->$_ci_key;
+				if (property_exists($_ci_CI, $_ci_key)) {
+					$this->$_ci_key = $_ci_CI->$_ci_key;
+				} else {
+					$this->$_ci_key =& $_ci_CI->$_ci_key;
+				}
 			}
 		}
 
